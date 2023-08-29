@@ -396,8 +396,12 @@ int block_cache::try_read(disk_io_job* j, buffer_allocator_interface& allocator
 			if (compressed_length>=buffer_size || buffer_size/(buffer_size-compressed_length)>10) {
 				compressed_length = 0;
 			}
+		} else {
+			compressed_length = 0;
 		}
-		j->m_compressed_buf = new compressed_entity(compress_buf, compressed_length, status);
+		if (compressed_length != 0) {
+			j->m_compressed_buf = new compressed_entity(compress_buf, compressed_length, status);
+		}
 	}
 	ret = j->d.io.buffer_size;
 	return ret;
