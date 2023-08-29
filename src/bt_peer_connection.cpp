@@ -2316,39 +2316,6 @@ namespace {
 		stats_counters().inc_stats_counter(counters::num_outgoing_extended);
 	}
 
-	void bt_peer_connection::try_compress_piece(peer_request const& r, disk_buffer_holder buffer)
-	{
-		std::size_t compressed_length = snappy_max_compressed_length(r.length);
-		char* compress_buf = (char*) std::malloc(compressed_length);
-		int stat_result = snappy_compress(buffer.data(), r.length, compress_buf, &compressed_length);
-		if (stat_result != SNAPPY_OK) {
-			if (stat_result == SNAPPY_INVALID_INPUT) {
-				disconnect(errors::snappy_invalid_input, operation_t::compress_block_data);
-			}
-			if  (stat_result == SNAPPY_BUFFER_TOO_SMALL) {
-				disconnect(errors::snappy_buffer_too_small, operation_t::compress_block_data);
-			}
-			return;
-		}
-	
-		// If compress rate less than 10%, we give up compress it and transfer raw data block
-		if (int(compressed_length)>=r.length || r.length/(r.length-compressed_length)>10) {
-			return write_piece(std::move(r), std::move(buffer));
-		}
-		peer_request new_r;
-		new_r.piece = r.piece;
-		new_r.start = r.start;
-		new_r.length = compressed_length;
-		new_r.optional_length = r.length;
-		buffer.reset(compress_buf, compressed_length);
-#ifndef TORRENT_DISABLE_LOGGING
-		peer_log(peer_log_alert::info, "COMPRESSION",
-		         "Send compressed block=%d of piece=%d, raw_len=%d, compressed_len=%d",
-				 new_r.start, int(new_r.piece), new_r.optional_length, new_r.length);
-#endif
-		write_piece(std::move(new_r), std::move(buffer));
-	}
-
 	void bt_peer_connection::write_piece(peer_request const& r, disk_buffer_holder buffer)
 	{
 		INVARIANT_CHECK;

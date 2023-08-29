@@ -30,6 +30,10 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
+#include <snappy-c.h>
+
+#include "iostream"
+
 #include "libtorrent/config.hpp"
 #include "libtorrent/block_cache.hpp"
 #include "libtorrent/assert.hpp"
@@ -381,6 +385,20 @@ int block_cache::try_read(disk_io_job* j, buffer_allocator_interface& allocator
 	ret = copy_from_piece(p, j, allocator, expect_no_fail);
 	if (ret < 0) return ret;
 
+	if (j->try_compress) {
+		auto& buffer = boost::get<disk_buffer_holder>(j->argument);
+		std::size_t buffer_size = buffer.size();
+		std::size_t compressed_length = snappy_max_compressed_length(buffer_size);
+		char* compress_buf = (char*) std::malloc(compressed_length);
+		int status = snappy_compress(buffer.data(), buffer_size, compress_buf, &compressed_length);
+		if (status == SNAPPY_OK) {
+			// If compress rate less than 10%, we give up compress it and transfer raw data block
+			if (compressed_length>=buffer_size || buffer_size/(buffer_size-compressed_length)>10) {
+				compressed_length = 0;
+			}
+		}
+		j->m_compressed_buf = new compressed_entity(compress_buf, compressed_length, status);
+	}
 	ret = j->d.io.buffer_size;
 	return ret;
 }

@@ -110,6 +110,11 @@ namespace libtorrent {
 
 		std::size_t size() const { return m_size; }
 
+		void resize(std::size_t size) {
+			m_size = size;
+		}
+		bool m_mannual_free = false;
+
 	private:
 
 		buffer_allocator_interface* m_allocator;

@@ -1297,6 +1297,21 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 			m_stats_counters.inc_stats_counter(counters::disk_read_time, read_time);
 			m_stats_counters.inc_stats_counter(counters::disk_job_time, read_time);
 		}
+
+		if (j->try_compress) {
+			std::size_t buffer_size = buffer.size();
+			std::size_t compressed_length = snappy_max_compressed_length(buffer_size);
+			char* compress_buf = (char*) std::malloc(compressed_length);
+			int status = snappy_compress(buffer.data(), buffer_size, compress_buf, &compressed_length);
+			if (status == SNAPPY_OK) {
+				// If compress rate less than 10%, we give up compress it and transfer raw data block
+				if (compressed_length>=buffer_size || buffer_size/(buffer_size-compressed_length)>10) {
+					compressed_length = 0;
+				}
+			}
+			j->m_compressed_buf = new compressed_entity(compress_buf, compressed_length, status);
+		}
+
 		return status_t::no_error;
 	}
 
@@ -1613,7 +1628,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 
 	void disk_io_thread::async_read(storage_index_t storage, peer_request const& r
 		, std::function<void(disk_buffer_holder block, disk_job_flags_t const flags
-		, storage_error const& se)> handler, disk_job_flags_t const flags)
+		, storage_error const& se, compressed_entity* compressed_buf)> handler, disk_job_flags_t const flags)
 	{
 		TORRENT_ASSERT(r.length <= default_block_size);
 
@@ -1628,6 +1643,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 		j->argument = disk_buffer_holder(*this, nullptr, 0);
 		j->flags = flags;
 		j->callback = std::move(handler);
+		j->try_compress = m_settings.get_bool(settings_pack::enable_piece_compression_transmission);
 
 		TORRENT_ASSERT(static_cast<int>(r.piece) * static_cast<std::int64_t>(j->storage->files().piece_length())
 			+ r.start + r.length <= j->storage->files().total_size());

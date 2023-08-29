@@ -49,6 +49,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/flags.hpp"
 #include "libtorrent/session_types.hpp"
 
+#include "libtorrent/compressed_entity.hpp"
+
 namespace libtorrent {
 
 	struct disk_observer;
@@ -147,7 +149,7 @@ namespace libtorrent {
 		virtual storage_interface* get_torrent(storage_index_t) = 0;
 
 		virtual void async_read(storage_index_t storage, peer_request const& r
-			, std::function<void(disk_buffer_holder block, disk_job_flags_t flags, storage_error const& se)> handler
+			, std::function<void(disk_buffer_holder block, disk_job_flags_t flags, storage_error const& se, compressed_entity* compress_buf)> handler
 			, disk_job_flags_t flags = {}) = 0;
 		virtual bool async_write(storage_index_t storage, peer_request const& r
 			, char const* buf, std::shared_ptr<disk_observer> o

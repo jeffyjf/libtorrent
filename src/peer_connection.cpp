@@ -34,6 +34,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <functional>
 #include <cstdint>
 
+
+#include <snappy-c.h>
+
 #include "libtorrent/config.hpp"
 #include "libtorrent/peer_connection.hpp"
 #include "libtorrent/entry.hpp"
@@ -5302,8 +5305,8 @@ namespace libtorrent {
 
 				auto conn = self();
 				m_disk_thread.async_read(t->storage(), r
-					, [conn, r](disk_buffer_holder buf, disk_job_flags_t f, storage_error const& ec)
-					{ conn->wrap(&peer_connection::on_disk_read_complete, std::move(buf), f, ec, r, clock_type::now()); });
+					, [conn, r](disk_buffer_holder buf, disk_job_flags_t f, storage_error const& ec, compressed_entity* compressed_buf)
+					{ conn->wrap(&peer_connection::on_disk_read_complete, std::move(buf), f, ec, r, clock_type::now(), compressed_buf); });
 			}
 			m_last_sent_payload = clock_type::now();
 			m_requests.erase(m_requests.begin() + i);
@@ -5376,7 +5379,7 @@ namespace libtorrent {
 
 	void peer_connection::on_disk_read_complete(disk_buffer_holder buffer
 		, disk_job_flags_t const flags, storage_error const& error
-		, peer_request const& r, time_point const issue_time)
+		, peer_request const& r, time_point const issue_time, compressed_entity* compressed_buf)
 	{
 		TORRENT_ASSERT(is_single_thread());
 		// return value:
@@ -5458,8 +5461,31 @@ namespace libtorrent {
 		{
 			t->add_suggest_piece(r.piece);
 		}
-		if (m_settings.get_bool(settings_pack::enable_piece_compression_transmission)) {
-			try_compress_piece(r, std::move(buffer));
+		if (compressed_buf != nullptr) {
+			TORRENT_ASSERT(compressed_buf->m_size != 0);
+			if (compressed_buf->m_status != SNAPPY_OK) {
+				if (compressed_buf->m_status == SNAPPY_INVALID_INPUT) {
+					disconnect(errors::snappy_invalid_input, operation_t::compress_block_data);
+				}
+				if  (compressed_buf->m_status == SNAPPY_BUFFER_TOO_SMALL) {
+					disconnect(errors::snappy_buffer_too_small, operation_t::compress_block_data);
+				}
+				return;
+			}
+			peer_request new_r;
+			new_r.piece = r.piece;
+			new_r.start = r.start;
+			new_r.length = compressed_buf->m_size;
+			new_r.optional_length = r.length;
+		//	std::memcpy(buffer.get(), compressed_buf->m_buf, compressed_buf->m_size);
+			// buffer.resize(compressed_buf->m_size);
+			buffer.reset(compressed_buf->m_buf, compressed_buf->m_size);
+			// buffer.m_mannual_free = true;
+			// buffer.set_mannual_free();
+			buffer.m_mannual_free = true;
+			write_piece(new_r, std::move(buffer));
+		//	std::free(compressed_buf->m_buf);
+			delete compressed_buf;
 		} else {
 			write_piece(r, std::move(buffer));
 		}
