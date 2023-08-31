@@ -156,8 +156,8 @@ namespace {
 
 		set.set_int(settings_pack::max_rejects, 10);
 
-		set.set_int(settings_pack::recv_socket_buffer_size, 16 * 1024);
-		set.set_int(settings_pack::send_socket_buffer_size, 16 * 1024);
+		set.set_int(settings_pack::recv_socket_buffer_size, 64 * 1024);
+		set.set_int(settings_pack::send_socket_buffer_size, 64 * 1024);
 
 		// use less memory when reading and writing
 		// whole pieces

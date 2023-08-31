@@ -2336,7 +2336,7 @@ namespace {
 	// var      piece data
 		char msg[4 + 1 + 4 + 4 + 4 + 4];
 		char* ptr = msg;
-		TORRENT_ASSERT(r.length <= 16 * 1024);
+		TORRENT_ASSERT(r.length <= default_block_size);
 		detail::write_int32(r.length + 1 + 4 + 4 + 4, ptr);
 		if (m_settings.get_bool(settings_pack::support_merkle_torrents) && merkle)
 			detail::write_uint8(250, ptr);

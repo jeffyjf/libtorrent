@@ -62,8 +62,8 @@ namespace libtorrent {
 
 	// internal
 	// this is a bittorrent constant
-	// constexpr int default_block_size = 1<<20;
-	constexpr int default_block_size = 0x4000;
+	constexpr int default_block_size = 1<<16;
+	// constexpr int default_block_size = 0x4000;
 
 	namespace file_open_mode
 	{

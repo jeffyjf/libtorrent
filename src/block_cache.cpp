@@ -378,7 +378,7 @@ int block_cache::try_read(disk_io_job* j, buffer_allocator_interface& allocator
 	if (p == nullptr) return -1;
 
 #if TORRENT_USE_ASSERTS
-	p->piece_log.push_back(piece_log_t(j->action, j->d.io.offset / 0x4000));
+	p->piece_log.push_back(piece_log_t(j->action, j->d.io.offset / default_block_size));
 #endif
 	cache_hit(p, j->d.io.offset / default_block_size, bool(j->flags & disk_interface::volatile_read));
 
@@ -1691,11 +1691,11 @@ int block_cache::copy_from_piece(cached_piece_entry* const pe
 		// make sure it didn't wrap
 		TORRENT_PIECE_ASSERT(pe->refcount > 0, pe);
 		int const blocks_per_piece = (j->storage->files().piece_length() + default_block_size - 1) / default_block_size;
-		TORRENT_ASSERT(block_offset < 0x4000);
+		TORRENT_ASSERT(block_offset < default_block_size);
 		j->argument = disk_buffer_holder(allocator
 			, aux::block_cache_reference{ j->storage->storage_index()
 				, static_cast<int>(pe->piece) * blocks_per_piece + start_block}
-			, bl.buf + block_offset, static_cast<std::size_t>(0x4000 - block_offset));
+			, bl.buf + block_offset, static_cast<std::size_t>(default_block_size - block_offset));
 		j->storage->inc_refcount();
 
 		++m_send_buffer_blocks;
@@ -1712,7 +1712,7 @@ int block_cache::copy_from_piece(cached_piece_entry* const pe
 	}
 
 	j->argument = disk_buffer_holder(allocator
-		, allocate_buffer("send buffer"), 0x4000);
+		, allocate_buffer("send buffer"), default_block_size);
 	if (!boost::get<disk_buffer_holder>(j->argument)) return -2;
 
 	while (size > 0)

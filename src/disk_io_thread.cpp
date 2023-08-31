@@ -1266,7 +1266,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 
 	status_t disk_io_thread::do_uncached_read(disk_io_job* j)
 	{
-		j->argument = disk_buffer_holder(*this, m_disk_cache.allocate_buffer("send buffer"), 0x4000);
+		j->argument = disk_buffer_holder(*this, m_disk_cache.allocate_buffer("send buffer"), default_block_size);
 		auto& buffer = boost::get<disk_buffer_holder>(j->argument);
 		if (buffer.get() == nullptr)
 		{
@@ -1581,9 +1581,9 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 #if TORRENT_USE_ASSERTS
 			print_piece_log(pe->piece_log);
 #endif
-			TORRENT_ASSERT(pe->blocks[j->d.io.offset / 16 / 1024].buf
+			TORRENT_ASSERT(pe->blocks[j->d.io.offset / default_block_size].buf
 				!= boost::get<disk_buffer_holder>(j->argument).get());
-			TORRENT_ASSERT(pe->blocks[j->d.io.offset / 16 / 1024].buf != nullptr);
+			TORRENT_ASSERT(pe->blocks[j->d.io.offset / default_block_size].buf != nullptr);
 			j->error.ec = error::operation_aborted;
 			j->error.operation = operation_t::file_write;
 			return status_t::fatal_disk_error;
@@ -1595,7 +1595,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 		if (pe)
 		{
 #if TORRENT_USE_ASSERTS
-			pe->piece_log.push_back(piece_log_t(j->action, j->d.io.offset / 0x4000));
+			pe->piece_log.push_back(piece_log_t(j->action, j->d.io.offset / default_block_size));
 #endif
 
 			if (!pe->hashing_done
@@ -1682,7 +1682,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 	{
 		TORRENT_ASSERT(j->action == job_action_t::read);
 
-		int const ret = m_disk_cache.try_read(j, *this);
+		/*int const ret = m_disk_cache.try_read(j, *this);
 		if (ret >= 0)
 		{
 			m_stats_counters.inc_stats_counter(counters::num_blocks_cache_hits);
@@ -1697,7 +1697,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 			j->error.operation = operation_t::alloc_cache_piece;
 			j->ret = status_t::fatal_disk_error;
 			return 0;
-		}
+		}*/
 
 		if (check_fence && j->storage->is_blocked(j))
 		{
@@ -1750,11 +1750,10 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 		, disk_job_flags_t const flags)
 	{
 		TORRENT_ASSERT(r.length <= default_block_size);
-		TORRENT_ASSERT(r.length <= 16 * 1024);
 		TORRENT_ASSERT(buf != nullptr);
 
 		bool exceeded = false;
-		disk_buffer_holder buffer(*this, m_disk_cache.allocate_buffer(exceeded, o, "receive buffer"), 0x4000);
+		disk_buffer_holder buffer(*this, m_disk_cache.allocate_buffer(exceeded, o, "receive buffer"), default_block_size);
 		if (!buffer) aux::throw_ex<std::bad_alloc>();
 		if (r.optional_length) {
 			DLOG("Uncompress block data, piece: %d start: %d compressed_len: %d raw_len: %d\n",
@@ -1782,6 +1781,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 				}
 				return exceeded;
 			}
+			std::cout << "============  r.length: " << r.length << " uncompress_len: " << uncompress_len << std::endl;
 			TORRENT_ASSERT(r.length==int(uncompress_len));
 			std::memcpy(buffer.get(), tmp_buf.data(), aux::numeric_cast<std::size_t>(r.length));
 		} else {
@@ -1807,7 +1807,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 			// to be cleared first, (async_clear_piece).
 			TORRENT_ASSERT(pe->hashing_done == 0);
 
-			TORRENT_ASSERT(pe->blocks[r.start / 0x4000].refcount == 0 || pe->blocks[r.start / 0x4000].buf == nullptr);
+			TORRENT_ASSERT(pe->blocks[r.start / default_block_size].refcount == 0 || pe->blocks[r.start / default_block_size].buf == nullptr);
 		}
 		l3_.unlock();
 #endif
@@ -3423,9 +3423,9 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 				cached_piece_entry* pe = m_disk_cache.find_piece(j);
 				if (!pe) continue;
 
-				TORRENT_ASSERT(pe->blocks[j->d.io.offset / 16 / 1024].buf
+				TORRENT_ASSERT(pe->blocks[j->d.io.offset / default_block_size].buf
 					!= boost::get<disk_buffer_holder>(j->argument).get());
-				TORRENT_ASSERT(pe->blocks[j->d.io.offset / 16 / 1024].buf == nullptr);
+				TORRENT_ASSERT(pe->blocks[j->d.io.offset / default_block_size].buf == nullptr);
 				TORRENT_ASSERT(!pe->hashing_done);
 			}
 #endif
@@ -3470,7 +3470,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 				}
 
 #if TORRENT_USE_ASSERTS
-				pe->piece_log.push_back(piece_log_t(j->action, j->d.io.offset / 0x4000));
+				pe->piece_log.push_back(piece_log_t(j->action, j->d.io.offset / default_block_size));
 #endif
 
 				if (!pe->hashing_done

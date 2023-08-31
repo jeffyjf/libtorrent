@@ -88,7 +88,7 @@ namespace {
 #endif
 
 			int size = m_torrent.torrent_file().piece_size(p);
-			peer_request r = {p, 0, std::min(16 * 1024, size)};
+			peer_request r = {p, 0, std::min(64 * 1024, size)};
 			piece_block pb(p, 0);
 			while (size > 0)
 			{
@@ -107,9 +107,9 @@ namespace {
 				if (i == m_block_hashes.end() || i->first.piece_index != p)
 					break;
 
-				r.start += 16 * 1024;
-				size -= 16 * 1024;
-				r.length = std::min(16 * 1024, size);
+				r.start += 64 * 1024;
+				size -= 64 * 1024;
+				r.length = std::min(64 * 1024, size);
 				++pb.block_index;
 			}
 
@@ -139,7 +139,7 @@ namespace {
 			m_torrent.picker().get_downloaders(downloaders, p);
 
 			int size = m_torrent.torrent_file().piece_size(p);
-			peer_request r = {p, 0, std::min(16*1024, size)};
+			peer_request r = {p, 0, std::min(64*1024, size)};
 			piece_block pb(p, 0);
 			for (auto const& i : downloaders)
 			{
@@ -155,9 +155,9 @@ namespace {
 						, disk_interface::force_copy);
 				}
 
-				r.start += 16*1024;
-				size -= 16*1024;
-				r.length = std::min(16*1024, size);
+				r.start += 64*1024;
+				size -= 64*1024;
+				r.length = std::min(64*1024, size);
 				++pb.block_index;
 			}
 			TORRENT_ASSERT(size <= 0);

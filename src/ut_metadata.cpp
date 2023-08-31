@@ -65,8 +65,8 @@ namespace libtorrent {namespace {
 		// we'll wait another second before checking
 		// the send buffer size again. So, this may limit
 		// the rate at which we can server metadata to
-		// 160 kiB/s
-		send_buffer_limit = 0x4000 * 10,
+		// 640 kiB/s
+		send_buffer_limit = 0x10000 * 10,
 
 		// this is the max number of requests we'll queue
 		// up. If we get more requests tha this, we'll
@@ -149,7 +149,7 @@ namespace libtorrent {namespace {
 			if (m_metadata_size > 0 || size <= 0 || size > 4 * 1024 * 1024) return;
 			m_metadata_size = size;
 			m_metadata.reset(new char[std::size_t(size)]);
-			m_requested_metadata.resize(div_round_up(size, 16 * 1024));
+			m_requested_metadata.resize(div_round_up(size, 64 * 1024));
 		}
 
 		// explicitly disallow assignment, to silence msvc warning
@@ -256,14 +256,14 @@ namespace libtorrent {namespace {
 
 			if (type == 1)
 			{
-				TORRENT_ASSERT(piece >= 0 && piece < (m_tp.get_metadata_size() + 16 * 1024 - 1) / (16 * 1024));
+				TORRENT_ASSERT(piece >= 0 && piece < (m_tp.get_metadata_size() + 64 * 1024 - 1) / (64 * 1024));
 				TORRENT_ASSERT(m_pc.associated_torrent().lock()->valid_metadata());
 				TORRENT_ASSERT(m_torrent.valid_metadata());
 
-				int const offset = piece * 16 * 1024;
+				int const offset = piece * 64 * 1024;
 				metadata = m_tp.metadata().data() + offset;
 				metadata_piece_size = std::min(
-					m_tp.get_metadata_size() - offset, 16 * 1024);
+					m_tp.get_metadata_size() - offset, 64 * 1024);
 				TORRENT_ASSERT(metadata_piece_size > 0);
 				TORRENT_ASSERT(offset >= 0);
 				TORRENT_ASSERT(offset + metadata_piece_size <= m_tp.get_metadata_size());
@@ -349,7 +349,7 @@ namespace libtorrent {namespace {
 				case metadata_req:
 				{
 					if (!m_torrent.valid_metadata()
-						|| piece < 0 || piece >= (m_tp.get_metadata_size() + 16 * 1024 - 1) / (16 * 1024))
+						|| piece < 0 || piece >= (m_tp.get_metadata_size() + 64 * 1024 - 1) / (64 * 1024))
 					{
 #ifndef TORRENT_DISABLE_LOGGING
 						if (m_pc.should_log(peer_log_alert::info))
@@ -552,7 +552,7 @@ namespace libtorrent {namespace {
 			}
 
 			m_metadata.reset(new char[std::size_t(total_size)]);
-			m_requested_metadata.resize(div_round_up(total_size, 16 * 1024));
+			m_requested_metadata.resize(div_round_up(total_size, 64 * 1024));
 			m_metadata_size = total_size;
 		}
 
@@ -576,13 +576,13 @@ namespace libtorrent {namespace {
 			return false;
 		}
 
-		if (piece * 16 * 1024 + buf.size() > m_metadata_size)
+		if (piece * 64 * 1024 + buf.size() > m_metadata_size)
 		{
 			// this piece is invalid
 			return false;
 		}
 
-		std::memcpy(&m_metadata[piece * 16 * 1024], buf.data(), aux::numeric_cast<std::size_t>(buf.size()));
+		std::memcpy(&m_metadata[piece * 64 * 1024], buf.data(), aux::numeric_cast<std::size_t>(buf.size()));
 		// mark this piece has 'have'
 		m_requested_metadata[piece].num_requests = std::numeric_limits<int>::max();
 		m_requested_metadata[piece].source = source.shared_from_this();

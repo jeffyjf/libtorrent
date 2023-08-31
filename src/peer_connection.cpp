@@ -1095,7 +1095,7 @@ namespace libtorrent {
 			rate = m_download_rate_peak;
 		}
 		else if (aux::time_now() - m_last_unchoked < seconds(5)
-			&& m_statistics.total_payload_upload() < 2 * 0x4000)
+			&& m_statistics.total_payload_upload() < 2 * default_block_size)
 		{
 			// if we're have only been unchoked for a short period of time,
 			// we don't know what rate we can get from this peer. Instead of assuming
@@ -5477,6 +5477,7 @@ namespace libtorrent {
 			new_r.start = r.start;
 			new_r.length = compressed_buf->m_size;
 			new_r.optional_length = r.length;
+			std::cout << "==========peer_connection::on_disk_read_complete length: " << new_r.length << " optional_length: " << new_r.optional_length << std::endl;
 		//	std::memcpy(buffer.get(), compressed_buf->m_buf, compressed_buf->m_size);
 			// buffer.resize(compressed_buf->m_size);
 			buffer.reset(compressed_buf->m_buf, compressed_buf->m_size);
@@ -5682,7 +5683,7 @@ namespace libtorrent {
 
 			if (!m_connecting
 				&& !m_requests.empty()
-				&& m_reading_bytes > m_settings.get_int(settings_pack::send_buffer_watermark) - 0x4000)
+				&& m_reading_bytes > m_settings.get_int(settings_pack::send_buffer_watermark) - default_block_size)
 			{
 				std::shared_ptr<torrent> t = m_torrent.lock();
 

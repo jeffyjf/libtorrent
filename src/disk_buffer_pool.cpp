@@ -341,7 +341,7 @@ namespace libtorrent {
 		{
 			m_max_use = cache_size;
 		}
-		m_low_watermark = m_max_use - std::max(16, sett.get_int(settings_pack::max_queued_disk_bytes) / 0x4000);
+		m_low_watermark = m_max_use - std::max(16, sett.get_int(settings_pack::max_queued_disk_bytes) / default_block_size);
 		if (m_low_watermark < 0) m_low_watermark = 0;
 		if (m_in_use >= m_max_use && !m_exceeded_max_size)
 		{
