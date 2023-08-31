@@ -2334,8 +2334,9 @@ namespace {
 			return;
 		}
 	
-		// If compress rate less than 10%, we give up compress it and transfer raw data block
-		if (int(compressed_length)>=r.length || r.length/(r.length-compressed_length)>10) {
+		// If compress rate less than 2%, we give up compress it and transfer raw data block
+		if (int(compressed_length)>=r.length || r.length/(r.length-compressed_length)>50) {
+			std::free(compress_buf);
 			return write_piece(std::move(r), std::move(buffer));
 		}
 		peer_request new_r;
@@ -2344,6 +2345,7 @@ namespace {
 		new_r.length = compressed_length;
 		new_r.optional_length = r.length;
 		buffer.reset(compress_buf, compressed_length);
+		buffer.set_manual_free(true);
 #ifndef TORRENT_DISABLE_LOGGING
 		peer_log(peer_log_alert::info, "COMPRESSION",
 		         "Send compressed block=%d of piece=%d, raw_len=%d, compressed_len=%d",
