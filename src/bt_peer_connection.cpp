@@ -1145,6 +1145,8 @@ namespace {
 		if (!m_recv_buffer.packet_finished()) return;
 		if (p.optional_length) {
 			TORRENT_ASSERT(p.length>p.optional_length);
+			// If the block data was compressed, we need to make up difference for statistic
+			received_bytes(p.length-p.optional_length, 0);
 			incoming_piece_fragment(p.length-p.optional_length);
 		}
 
@@ -1895,7 +1897,8 @@ namespace {
 		std::int64_t const stats_diff = statistics().last_payload_downloaded()
 			- cur_payload_dl + statistics().last_protocol_downloaded()
 			- cur_protocol_dl;
-		TORRENT_ASSERT(stats_diff == received);
+		// In here, the received data was compressed, but the stats already make up the difference
+		TORRENT_ASSERT(stats_diff >= received);
 #endif
 
 		bool const finished = m_recv_buffer.packet_finished();
@@ -2419,7 +2422,13 @@ namespace {
 			append_const_send_buffer(std::move(buffer), r.length);
 		}
 
-		m_payloads.emplace_back(send_buffer_size() - r.length, r.length);
+		if (r.optional_length == 0) {
+			m_payloads.emplace_back(send_buffer_size() - r.length, r.length, 0);
+		} else {
+			TORRENT_ASSERT(r.optional_length>r.length);
+			// if the block data was compressed, we need to make up the difference for traffic statistics
+			m_payloads.emplace_back(send_buffer_size() - r.length, r.length, r.optional_length-r.length);
+		}
 		setup_send();
 
 		stats_counters().inc_stats_counter(counters::num_outgoing_piece);
@@ -3420,7 +3429,8 @@ namespace {
 			TORRENT_ASSERT(statistics().last_protocol_downloaded() - cur_protocol_dl >= 0);
 			std::int64_t const stats_diff = statistics().last_payload_downloaded() - cur_payload_dl +
 				statistics().last_protocol_downloaded() - cur_protocol_dl;
-			TORRENT_ASSERT(stats_diff == std::int64_t(bytes_transferred));
+			// In here, the transferred data was compressed, but the stats already make up the difference
+			TORRENT_ASSERT(stats_diff >= std::int64_t(bytes_transferred));
 			TORRENT_ASSERT(!m_recv_buffer.packet_finished());
 #endif
 			return;
@@ -3487,6 +3497,7 @@ namespace {
 						i->length -= -i->start;
 						i->start = 0;
 					}
+					sent_bytes(i->complement, 0);
 				}
 			}
 

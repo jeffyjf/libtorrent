@@ -6315,7 +6315,8 @@ namespace libtorrent {
 		TORRENT_ASSERT(m_statistics.last_protocol_uploaded() - cur_protocol_ul >= 0);
 		std::int64_t stats_diff = m_statistics.last_payload_uploaded() - cur_payload_ul
 			+ m_statistics.last_protocol_uploaded() - cur_protocol_ul;
-		TORRENT_ASSERT(stats_diff == int(bytes_transferred));
+		// In here, the transferred data was compressed, but the stats already make up the difference
+		TORRENT_ASSERT(stats_diff >= int(bytes_transferred));
 #endif
 
 		fill_send_buffer();

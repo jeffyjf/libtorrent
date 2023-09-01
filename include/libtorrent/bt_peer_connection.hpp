@@ -431,15 +431,17 @@ namespace libtorrent {
 		// separately on payload and protocol data.
 		struct range
 		{
-			range(int s, int l)
+			range(int s, int l, int c)
 				: start(s)
 				, length(l)
+				, complement(c)
 			{
 				TORRENT_ASSERT(s >= 0);
 				TORRENT_ASSERT(l > 0);
 			}
 			int start;
 			int length;
+			int complement;
 		};
 
 		std::vector<range> m_payloads;
