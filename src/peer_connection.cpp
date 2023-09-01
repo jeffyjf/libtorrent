@@ -5458,7 +5458,7 @@ namespace libtorrent {
 		{
 			t->add_suggest_piece(r.piece);
 		}
-		if (m_settings.get_bool(settings_pack::enable_piece_compression_transmission)) {
+		if (m_torrent.lock()->m_enable_compression) {
 			try_compress_piece(r, std::move(buffer));
 		} else {
 			write_piece(r, std::move(buffer));
