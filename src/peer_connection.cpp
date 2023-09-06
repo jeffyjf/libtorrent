@@ -2850,8 +2850,8 @@ namespace libtorrent {
 			peer_log(peer_log_alert::info, "INVALID_REQUEST", "The block we just got was not in the request queue");
 #endif
 #if TORRENT_USE_ASSERTS
-			TORRENT_ASSERT_VAL(m_received_in_piece == p.length, m_received_in_piece);
-			m_received_in_piece = 0;
+	TORRENT_ASSERT_VAL(m_received_in_piece == p.length, m_received_in_piece);
+	m_received_in_piece = 0;
 #endif
 			t->add_redundant_bytes(p.length, waste_reason::piece_unknown);
 
@@ -2868,8 +2868,8 @@ namespace libtorrent {
 		}
 
 #if TORRENT_USE_ASSERTS
-		TORRENT_ASSERT_VAL(m_received_in_piece == p.length, m_received_in_piece);
-		m_received_in_piece = 0;
+	TORRENT_ASSERT_VAL(m_received_in_piece == p.length, m_received_in_piece);
+	m_received_in_piece = 0;
 #endif
 		// if the block we got is already finished, then ignore it
 		if (picker.is_downloaded(block_finished))
@@ -5458,7 +5458,11 @@ namespace libtorrent {
 		{
 			t->add_suggest_piece(r.piece);
 		}
-		write_piece(r, std::move(buffer));
+		if (m_torrent.lock()->m_enable_compression) {
+			try_compress_piece(r, std::move(buffer));
+		} else {
+			write_piece(r, std::move(buffer));
+		}
 	}
 
 	void peer_connection::assign_bandwidth(int const channel, int const amount)
@@ -6311,7 +6315,8 @@ namespace libtorrent {
 		TORRENT_ASSERT(m_statistics.last_protocol_uploaded() - cur_protocol_ul >= 0);
 		std::int64_t stats_diff = m_statistics.last_payload_uploaded() - cur_payload_ul
 			+ m_statistics.last_protocol_uploaded() - cur_protocol_ul;
-		TORRENT_ASSERT(stats_diff == int(bytes_transferred));
+		// In here, the transferred data was compressed, but the stats already make up the difference
+		TORRENT_ASSERT(stats_diff >= int(bytes_transferred));
 #endif
 
 		fill_send_buffer();
