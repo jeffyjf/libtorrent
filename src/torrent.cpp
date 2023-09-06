@@ -241,6 +241,8 @@ bool is_downloading_state(int const st)
 		// TODO: 2 p should probably be moved in here
 		m_add_torrent_params.reset(new add_torrent_params(p));
 
+		m_upload_white_list = parse_upload_white_list(m_add_torrent_params->upload_white_list);
+
 #if TORRENT_USE_UNC_PATHS
 		m_save_path = canonicalize_path(m_save_path);
 #endif
