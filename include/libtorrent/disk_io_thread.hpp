@@ -300,7 +300,7 @@ namespace aux { struct block_cache_reference; }
 
 		void async_read(storage_index_t storage, peer_request const& r
 			, std::function<void(disk_buffer_holder block
-				, disk_job_flags_t flags, storage_error const& se)> handler, disk_job_flags_t flags = {}) override;
+				, disk_job_flags_t flags, storage_error const& se, compressed_entity* compress_buf)> handler, disk_job_flags_t flags = {}) override;
 		bool async_write(storage_index_t storage, peer_request const& r
 			, char const* buf, std::shared_ptr<disk_observer> o
 			, std::function<void(storage_error const&)> handler

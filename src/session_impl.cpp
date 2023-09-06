@@ -6431,7 +6431,7 @@ namespace {
 	void session_impl::update_queued_disk_bytes()
 	{
 		int const cache_size = m_settings.get_int(settings_pack::cache_size);
-		if (m_settings.get_int(settings_pack::max_queued_disk_bytes) / 16 / 1024
+		if (m_settings.get_int(settings_pack::max_queued_disk_bytes) / 64 / 1024
 			> cache_size / 2
 			&& cache_size > 5
 			&& m_alerts.should_post<performance_alert>())

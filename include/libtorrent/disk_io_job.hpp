@@ -43,6 +43,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/session_types.hpp"
 #include "libtorrent/flags.hpp"
 
+#include "libtorrent/compressed_entity.hpp"
+
 #include "libtorrent/aux_/disable_warnings_push.hpp"
 #include <boost/variant/variant.hpp>
 #include "libtorrent/aux_/disable_warnings_pop.hpp"
@@ -131,7 +133,7 @@ namespace libtorrent {
 
 		// this is called when operation completes
 
-		using read_handler = std::function<void(disk_buffer_holder block, disk_job_flags_t flags, storage_error const& se)>;
+		using read_handler = std::function<void(disk_buffer_holder block, disk_job_flags_t flags, storage_error const& se, compressed_entity* compressed_buf)>;
 		using write_handler = std::function<void(storage_error const&)>;
 		using hash_handler = std::function<void(piece_index_t, sha1_hash const&, storage_error const&)>;
 		using move_handler = std::function<void(status_t, std::string, storage_error const&)>;
@@ -215,6 +217,9 @@ namespace libtorrent {
 		// this is true when the job is blocked by a storage_fence
 		mutable bool blocked = false;
 #endif
+
+		bool try_compress = false;
+		compressed_entity* m_compressed_buf = nullptr;
 	};
 
 }

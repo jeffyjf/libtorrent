@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2006-2018, Arvid Norberg
+Copyright (c) 2010-2018, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,36 +30,24 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#ifndef TORRENT_PEER_REQUEST_HPP_INCLUDED
-#define TORRENT_PEER_REQUEST_HPP_INCLUDED
+#include <cstddef>
 
-#include "libtorrent/units.hpp"
+#ifndef TORRENT_COMPRESSED_ENTITY_HPP
+#define TORRENT_COMPRESSED_ENTITY_HPP
 
 namespace libtorrent {
 
-	// represents a byte range within a piece. Internally this is
-	// is used for incoming piece requests.
-	struct TORRENT_EXPORT peer_request
-	{
-		// the index of the piece in which the range starts.
-		piece_index_t piece;
-		// the offset within that piece where the range starts.
-		int start;
-		// the size of the range, in bytes.
-		int length;
-		// Some encrytion algorithms and compression algorithms
-		// will change the length of data block. In send side, the
-		// peer will encrypt or compress raw data block, optional_length
-		// used to record the raw length. In receive size, the peer will
-		// decrypt or uncompress data block, optional_length used to record
-		// the encrypted or compressed data block length.
-		int optional_length = 0;
+    struct compressed_entity {
+        char* m_buf;
+        std::size_t m_size;
+        int m_status;
+        compressed_entity(char* buf, std::size_t size, int status) {
+            m_buf = buf;
+            m_size = size;
+            m_status = status;
+        }
+    };
 
-		// returns true if the right hand side peer_request refers to the same
-		// range as this does.
-		bool operator==(peer_request const& r) const
-		{ return piece == r.piece && start == r.start && length == r.length; }
-	};
-}
+} // namespace libtorrent
 
-#endif // TORRENT_PEER_REQUEST_HPP_INCLUDED
+#endif // TORRENT_COMPRESSED_ENTIR_HPP

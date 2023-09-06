@@ -2973,7 +2973,7 @@ bool is_downloading_state(int const st)
 		req.downloaded = m_stat.total_payload_download() - m_total_failed_bytes;
 		req.uploaded = m_stat.total_payload_upload();
 		req.corrupt = m_total_failed_bytes;
-		req.left = value_or(bytes_left(), 16*1024);
+		req.left = value_or(bytes_left(), 64*1024);
 #ifdef TORRENT_USE_OPENSSL
 		// if this torrent contains an SSL certificate, make sure
 		// any SSL tracker presents a certificate signed by it
@@ -10125,7 +10125,7 @@ bool is_downloading_state(int const st)
 		// it is to request a time critical block from.
 		std::sort(peers.begin(), peers.end()
 			, [] (peer_connection const* lhs, peer_connection const* rhs)
-			{ return lhs->download_queue_time(16*1024) < rhs->download_queue_time(16*1024); });
+			{ return lhs->download_queue_time(64*1024) < rhs->download_queue_time(64*1024); });
 
 		// remove the bottom 10% of peers from the candidate set.
 		// this is just to remove outliers that might stall downloads
@@ -10259,7 +10259,7 @@ bool is_downloading_state(int const st)
 				// directly into the right place
 				std::sort(peers.begin(), peers.end()
 					, [] (peer_connection const* lhs, peer_connection const* rhs)
-					{ return lhs->download_queue_time(16*1024) < rhs->download_queue_time(16*1024); });
+					{ return lhs->download_queue_time(64*1024) < rhs->download_queue_time(64*1024); });
 			}
 
 			// if this peer's download time exceeds 2 seconds, we're done.

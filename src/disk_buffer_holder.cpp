@@ -82,6 +82,9 @@ namespace libtorrent {
 	{
 		TORRENT_ASSERT(m_ref.cookie == aux::block_cache_reference::none);
 		char* ret = m_buf;
+		if (m_mannual_free) {
+			std::free(m_buf);
+		}
 		m_buf = nullptr;
 		m_size = 0;
 		m_ref = aux::block_cache_reference();

@@ -30,6 +30,10 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
+#include <snappy-c.h>
+
+#include  "iostream"
+
 #include "libtorrent/config.hpp"
 #include "libtorrent/storage.hpp"
 #include "libtorrent/disk_io_thread.hpp"
@@ -1262,7 +1266,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 
 	status_t disk_io_thread::do_uncached_read(disk_io_job* j)
 	{
-		j->argument = disk_buffer_holder(*this, m_disk_cache.allocate_buffer("send buffer"), 0x4000);
+		j->argument = disk_buffer_holder(*this, m_disk_cache.allocate_buffer("send buffer"), default_block_size);
 		auto& buffer = boost::get<disk_buffer_holder>(j->argument);
 		if (buffer.get() == nullptr)
 		{
@@ -1293,6 +1297,25 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 			m_stats_counters.inc_stats_counter(counters::disk_read_time, read_time);
 			m_stats_counters.inc_stats_counter(counters::disk_job_time, read_time);
 		}
+
+		if (j->try_compress) {
+			std::size_t buffer_size = buffer.size();
+			std::size_t compressed_length = snappy_max_compressed_length(buffer_size);
+			char* compress_buf = (char*) std::malloc(compressed_length);
+			int status = snappy_compress(buffer.data(), buffer_size, compress_buf, &compressed_length);
+			if (status == SNAPPY_OK) {
+				// If compress rate less than 10%, we give up compress it and transfer raw data block
+				if (compressed_length>=buffer_size || buffer_size/(buffer_size-compressed_length)>10) {
+					compressed_length = 0;
+				}
+			} else {
+				compressed_length = 0;
+			}
+			if (compressed_length != 0) {
+				j->m_compressed_buf = new compressed_entity(compress_buf, compressed_length, status);
+			}
+		}
+
 		return status_t::no_error;
 	}
 
@@ -1558,9 +1581,9 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 #if TORRENT_USE_ASSERTS
 			print_piece_log(pe->piece_log);
 #endif
-			TORRENT_ASSERT(pe->blocks[j->d.io.offset / 16 / 1024].buf
+			TORRENT_ASSERT(pe->blocks[j->d.io.offset / default_block_size].buf
 				!= boost::get<disk_buffer_holder>(j->argument).get());
-			TORRENT_ASSERT(pe->blocks[j->d.io.offset / 16 / 1024].buf != nullptr);
+			TORRENT_ASSERT(pe->blocks[j->d.io.offset / default_block_size].buf != nullptr);
 			j->error.ec = error::operation_aborted;
 			j->error.operation = operation_t::file_write;
 			return status_t::fatal_disk_error;
@@ -1572,7 +1595,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 		if (pe)
 		{
 #if TORRENT_USE_ASSERTS
-			pe->piece_log.push_back(piece_log_t(j->action, j->d.io.offset / 0x4000));
+			pe->piece_log.push_back(piece_log_t(j->action, j->d.io.offset / default_block_size));
 #endif
 
 			if (!pe->hashing_done
@@ -1609,7 +1632,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 
 	void disk_io_thread::async_read(storage_index_t storage, peer_request const& r
 		, std::function<void(disk_buffer_holder block, disk_job_flags_t const flags
-		, storage_error const& se)> handler, disk_job_flags_t const flags)
+		, storage_error const& se, compressed_entity* compressed_buf)> handler, disk_job_flags_t const flags)
 	{
 		TORRENT_ASSERT(r.length <= default_block_size);
 
@@ -1624,6 +1647,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 		j->argument = disk_buffer_holder(*this, nullptr, 0);
 		j->flags = flags;
 		j->callback = std::move(handler);
+		j->try_compress = m_settings.get_bool(settings_pack::enable_piece_compression_transmission);
 
 		TORRENT_ASSERT(static_cast<int>(r.piece) * static_cast<std::int64_t>(j->storage->files().piece_length())
 			+ r.start + r.length <= j->storage->files().total_size());
@@ -1658,7 +1682,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 	{
 		TORRENT_ASSERT(j->action == job_action_t::read);
 
-		int const ret = m_disk_cache.try_read(j, *this);
+		/*int const ret = m_disk_cache.try_read(j, *this);
 		if (ret >= 0)
 		{
 			m_stats_counters.inc_stats_counter(counters::num_blocks_cache_hits);
@@ -1673,7 +1697,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 			j->error.operation = operation_t::alloc_cache_piece;
 			j->ret = status_t::fatal_disk_error;
 			return 0;
-		}
+		}*/
 
 		if (check_fence && j->storage->is_blocked(j))
 		{
@@ -1726,13 +1750,43 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 		, disk_job_flags_t const flags)
 	{
 		TORRENT_ASSERT(r.length <= default_block_size);
-		TORRENT_ASSERT(r.length <= 16 * 1024);
 		TORRENT_ASSERT(buf != nullptr);
 
 		bool exceeded = false;
-		disk_buffer_holder buffer(*this, m_disk_cache.allocate_buffer(exceeded, o, "receive buffer"), 0x4000);
+		disk_buffer_holder buffer(*this, m_disk_cache.allocate_buffer(exceeded, o, "receive buffer"), default_block_size);
 		if (!buffer) aux::throw_ex<std::bad_alloc>();
-		std::memcpy(buffer.get(), buf, aux::numeric_cast<std::size_t>(r.length));
+		if (r.optional_length) {
+			DLOG("Uncompress block data, piece: %d start: %d compressed_len: %d raw_len: %d\n",
+				 int(r.piece), r.start, r.optional_length, r.length);
+			std::size_t uncompress_len;
+			int stat_res = snappy_uncompressed_length(buf, r.optional_length, &uncompress_len);
+			if (stat_res != SNAPPY_OK) {
+				if (stat_res == SNAPPY_INVALID_INPUT) {
+					handler(storage_error(errors::snappy_invalid_input));
+				}
+				if  (stat_res == SNAPPY_BUFFER_TOO_SMALL) {
+					handler(storage_error(errors::snappy_buffer_too_small));
+				}
+				return exceeded;
+			}
+			std::vector<char> tmp_buf;
+			tmp_buf.resize(uncompress_len);
+			stat_res = snappy_uncompress(buf, r.optional_length, tmp_buf.data(), &uncompress_len);
+			if (stat_res != SNAPPY_OK) {
+				if (stat_res == SNAPPY_INVALID_INPUT) {
+					handler(storage_error(errors::snappy_invalid_input));
+				}
+				if  (stat_res == SNAPPY_BUFFER_TOO_SMALL) {
+					handler(storage_error(errors::snappy_buffer_too_small));
+				}
+				return exceeded;
+			}
+			std::cout << "============  r.length: " << r.length << " uncompress_len: " << uncompress_len << std::endl;
+			TORRENT_ASSERT(r.length==int(uncompress_len));
+			std::memcpy(buffer.get(), tmp_buf.data(), aux::numeric_cast<std::size_t>(r.length));
+		} else {
+			std::memcpy(buffer.get(), buf, aux::numeric_cast<std::size_t>(r.length));
+		}
 
 		disk_io_job* j = allocate_job(job_action_t::write);
 		j->storage = m_torrents[storage]->shared_from_this();
@@ -1753,7 +1807,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 			// to be cleared first, (async_clear_piece).
 			TORRENT_ASSERT(pe->hashing_done == 0);
 
-			TORRENT_ASSERT(pe->blocks[r.start / 0x4000].refcount == 0 || pe->blocks[r.start / 0x4000].buf == nullptr);
+			TORRENT_ASSERT(pe->blocks[r.start / default_block_size].refcount == 0 || pe->blocks[r.start / default_block_size].buf == nullptr);
 		}
 		l3_.unlock();
 #endif
@@ -3369,9 +3423,9 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 				cached_piece_entry* pe = m_disk_cache.find_piece(j);
 				if (!pe) continue;
 
-				TORRENT_ASSERT(pe->blocks[j->d.io.offset / 16 / 1024].buf
+				TORRENT_ASSERT(pe->blocks[j->d.io.offset / default_block_size].buf
 					!= boost::get<disk_buffer_holder>(j->argument).get());
-				TORRENT_ASSERT(pe->blocks[j->d.io.offset / 16 / 1024].buf == nullptr);
+				TORRENT_ASSERT(pe->blocks[j->d.io.offset / default_block_size].buf == nullptr);
 				TORRENT_ASSERT(!pe->hashing_done);
 			}
 #endif
@@ -3416,7 +3470,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 				}
 
 #if TORRENT_USE_ASSERTS
-				pe->piece_log.push_back(piece_log_t(j->action, j->d.io.offset / 0x4000));
+				pe->piece_log.push_back(piece_log_t(j->action, j->d.io.offset / default_block_size));
 #endif
 
 				if (!pe->hashing_done
