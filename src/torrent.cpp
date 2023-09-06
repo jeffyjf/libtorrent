@@ -190,6 +190,7 @@ bool is_downloading_state(int const st)
 		, m_last_seen_complete(p.last_seen_complete)
 		, m_swarm_last_seen_complete(p.last_seen_complete)
 		, m_info_hash(p.info_hash)
+		, m_enable_compression(p.enable_compression)
 		, m_error_file(torrent_status::error_file_none)
 		, m_sequence_number(-1)
 		, m_peer_id(aux::generate_peer_id(settings()))
@@ -239,6 +240,8 @@ bool is_downloading_state(int const st)
 		// TODO: 3 we could probably get away with just saving a few fields here
 		// TODO: 2 p should probably be moved in here
 		m_add_torrent_params.reset(new add_torrent_params(p));
+
+		m_upload_white_list = parse_upload_white_list(m_add_torrent_params->upload_white_list);
 
 #if TORRENT_USE_UNC_PATHS
 		m_save_path = canonicalize_path(m_save_path);
