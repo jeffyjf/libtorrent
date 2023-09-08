@@ -241,6 +241,13 @@ bool is_downloading_state(int const st)
 		// TODO: 2 p should probably be moved in here
 		m_add_torrent_params.reset(new add_torrent_params(p));
 
+		m_group_members = parse_group_members_list(p.group_members);
+
+		auto ptr = m_group_members.begin();
+		for (; ptr < m_group_members.end(); ptr++) {
+			std::cout << "The peer : " << *ptr << " is group member" << std::endl;
+		}
+
 #if TORRENT_USE_UNC_PATHS
 		m_save_path = canonicalize_path(m_save_path);
 #endif
@@ -1373,7 +1380,7 @@ bool is_downloading_state(int const st)
 			: m_picker(p)
 			, m_piece(piece)
 		{
-			m_picker.inc_refcount(m_piece, nullptr);
+			m_picker.inc_refcount(m_piece, nullptr, false);
 		}
 
 		piece_refcount(piece_refcount const&) = delete;
@@ -4453,7 +4460,7 @@ bool is_downloading_state(int const st)
 		if (has_picker())
 		{
 			torrent_peer* pp = peer->peer_info_struct();
-			m_picker->inc_refcount(index, pp);
+			m_picker->inc_refcount(index, pp,  peer->is_group_member());
 		}
 		else
 		{
@@ -4469,7 +4476,7 @@ bool is_downloading_state(int const st)
 		{
 			TORRENT_ASSERT(bits.size() == torrent_file().num_pieces());
 			torrent_peer* pp = peer->peer_info_struct();
-			m_picker->inc_refcount(bits, pp);
+			m_picker->inc_refcount(bits, pp, peer->is_group_member());
 		}
 		else
 		{
@@ -4482,7 +4489,7 @@ bool is_downloading_state(int const st)
 		if (has_picker())
 		{
 			torrent_peer* pp = peer->peer_info_struct();
-			m_picker->inc_refcount_all(pp);
+			m_picker->inc_refcount_all(pp, peer->is_group_member());
 		}
 		else
 		{

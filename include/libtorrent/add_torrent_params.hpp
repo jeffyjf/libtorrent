@@ -377,6 +377,8 @@ TORRENT_VERSION_NAMESPACE_2
 
 		bool enable_compression:1;
 
+		std::string group_members;
+
 	};
 
 TORRENT_VERSION_NAMESPACE_2_END

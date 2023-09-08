@@ -1429,6 +1429,8 @@ namespace libtorrent {
 
 		bool m_enable_compression:1;
 
+		std::vector<address_v4> m_group_members;
+
 	private:
 
 		// m_num_verified = m_verified.count()

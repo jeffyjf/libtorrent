@@ -69,8 +69,8 @@ void pop_alerts(lt::session& ses)
 
 int main(int argc, char* argv[]) try
 {
-	if (argc != 6) {
-		std::cerr << "usage: ./simple_client <save path> <torrent seed file> <log file path> <whether enable compression> <whether auto exit>\n";
+	if (argc != 7) {
+		std::cerr << "usage: ./simple_client <save path> <torrent seed file> <log file path> <whether enable compression> <whether auto exit> <group members>\n";
 		return 1;
 	}
 
@@ -137,6 +137,7 @@ int main(int argc, char* argv[]) try
 	} else {
 		p.enable_compression = false;
 	}
+	p.group_members = argv[6];
 	auto handle = ses.add_torrent(p);
 
 	while (!(handle.is_finished() && auto_exit))
