@@ -110,12 +110,17 @@ namespace libtorrent {
 
 		std::size_t size() const { return m_size; }
 
+		void set_manual_free(bool manual) {
+			m_manual_free = manual;
+		}
+
 	private:
 
 		buffer_allocator_interface* m_allocator;
 		char* m_buf;
 		std::size_t m_size;
 		aux::block_cache_reference m_ref;
+		bool m_manual_free = false;
 	};
 
 }
