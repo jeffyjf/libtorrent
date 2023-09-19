@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2014-2018, Arvid Norberg
 All rights reserved.
@@ -236,7 +236,7 @@ namespace {
 			TORRENT_ASSERT(p->associated_torrent().lock());
 		}
 #endif
-
+		//return (int)peers.size(); //terry
 #if TORRENT_ABI_VERSION == 1
 		// ==== BitTyrant ====
 		//
@@ -245,6 +245,7 @@ namespace {
 		// rate. If the peer has reciprocated, lower the estimate, if it hasn't,
 		// increase the estimate (this attempts to optimize "ROI" of upload
 		// capacity, by sending just enough to be reciprocated).
+		// 如果我们使用的是bittyrant unchoker，那么就要遍历所有已经解除阻塞的对等点，并调整我们估计的交互速率。如果对等端进行了交互，则降低估算值，如果没有，则增加估算值(这试图优化上传容量的“ROI”，通过发送足够的信息进行交互)。
 		// For more information, see: http://bittyrant.cs.washington.edu/
 		if (sett.get_int(settings_pack::choking_algorithm)
 			== settings_pack::bittyrant_choker)
@@ -256,14 +257,15 @@ namespace {
 				if (!p->has_peer_choked())
 				{
 					// we're unchoked, we may want to lower our estimated
-					// reciprocation rate
-					p->decrease_est_reciprocation_rate();
+					// reciprocation rate 我们没有阻塞，我们可能要降低估计的往复率
+					p->decrease_est_reciprocation_rate(); //3
 				}
 				else
 				{
 					// we've unchoked this peer, and it hasn't reciprocated
 					// we may want to increase our estimated reciprocation rate
-					p->increase_est_reciprocation_rate();
+					//我们已经解除了这个peer的阻塞，并且它没有进行交互，我们可能想要增加我们估计的交互速率
+					p->increase_est_reciprocation_rate();// 20
 				}
 			}
 
@@ -310,6 +312,7 @@ namespace {
 		// them in decreasing rates. For each peer we increase the threshold by
 		// 2 kiB/s. The first peer we get to whom we upload slower than
 		// the threshold, we stop and that's the number of unchoke slots we have.
+		//基于速率的choker将对对等体的上传速率与阈值进行比较，该阈值按其访问的每一个对等体的大小成比例地增加，访问的对等体上传速率降低。上载时隙的数量由上载速率超过阈值的对等方的数量确定。此选项设置此阈值的起始值。较高的值导致较少的未存储槽，较低的值导致更多。
 		if (sett.get_int(settings_pack::choking_algorithm)
 			== settings_pack::rate_based_choker)
 		{

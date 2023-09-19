@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2003-2018, Arvid Norberg
 All rights reserved.
@@ -124,31 +124,31 @@ namespace libtorrent {
 		// pick rarest first
 		static constexpr picker_options_t rarest_first = 0_bit;
 
-		// pick the most common first, or the last pieces if sequential
+		// pick the most common first, or the last pieces if sequential先挑最常见的，如果是连续的，最后挑
 		static constexpr picker_options_t reverse = 1_bit;
 
-		// only pick pieces exclusively requested from this peer
+		// only pick pieces exclusively requested from this peer只挑选这位同行专门要求的作品
 		static constexpr picker_options_t on_parole = 2_bit;
 
-		// always pick partial pieces before any other piece
+		// always pick partial pieces before any other piece 总是先挑部分的，再挑其他的
 		static constexpr picker_options_t prioritize_partials = 3_bit;
 
-		// pick pieces in sequential order
+		// pick pieces in sequential order 按顺序挑选
 		static constexpr picker_options_t sequential = 4_bit;
 
 		// treat pieces with priority 6 and below as filtered
 		// to trigger end-game mode until all prio 7 pieces are
-		// completed
+		// completed 优先级6及以下的棋子被过滤后会触发游戏结束模式，直到所有优先级7的棋子都完成
 		static constexpr picker_options_t time_critical_mode = 5_bit;
 
 		// only expands pieces (when prefer contiguous blocks is set)
 		// within properly aligned ranges, not the largest possible
-		// range of pieces.
+		// range of pieces.只在适当对齐范围内扩展块(当设置了首选连续块时)，而不是块的最大可能范围。
 		static constexpr picker_options_t align_expanded_pieces = 6_bit;
 
 		// this will create an affinity to pick pieces in extents of 4 MiB, in an
 		// attempt to improve disk I/O by picking ranges of pieces (if pieces are
-		// small)
+		//small)这将创建一个在4 MiB的范围内选择片段的亲和性，试图通过选择片段的范围(如果片段很小)来改善磁盘I/O。
 		static constexpr picker_options_t piece_extent_affinity = 7_bit;
 
 		struct downloading_piece

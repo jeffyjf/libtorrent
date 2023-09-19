@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2003-2018, Arvid Norberg
 All rights reserved.
@@ -501,7 +501,7 @@ namespace libtorrent {
 			|| p.banned
 			|| p.web_seed
 			|| !p.connectable
-			|| (p.seed && m_finished)
+			|| (p.seed && m_finished) //terry
 			|| int(p.failcount) >= m_max_failcount)
 			return false;
 
@@ -1132,7 +1132,7 @@ namespace libtorrent {
 			recalculate_connect_candidates(state);
 
 		// clear out any peers from the cache that no longer
-		// are connection candidates
+		// are connection candidates //候选人 从缓存中清除不再是连接候选的任何对等体
 		for (auto i = m_candidate_cache.begin(); i != m_candidate_cache.end();)
 		{
 			if (!is_connect_candidate(**i))

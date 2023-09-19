@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2017, Arvid Norberg
 All rights reserved.
@@ -63,6 +63,9 @@ namespace torrent_flags {
 	//
 	// It is not possible to *set* the ``seed_mode`` flag on a torrent after it has
 	// been added to a session. It is possible to *clear* it though.
+	//如果' ' seed_mode ' '被设置，libtorrent将假定所有文件都存在于此torrent中，并且它们都与torrent文件中的散列相匹配。每当一个对等体请求下载一个块时，该块将根据散列进行验证，除非它已经进行了验证。如果散列失败，种子将自动离开种子模式并重新检查所有文件。这种模式的用例是，如果创建并播种了一个种子，或者如果用户已经知道文件已经完成，这是一种避免初始文件检查的方法，并显著减少启动时间。
+	//在没有元数据(.torrent文件)的种子上设置' ' seed_mode ' '是一个无操作，将被忽略。
+	//在种子被添加到会话后，不可能在种子上 * 设置' ' seed_mode ' '标志。虽然可以“清除”它。
 	constexpr torrent_flags_t seed_mode = 0_bit;
 
 	// If ``upload_mode`` is set, the torrent will be initialized in
@@ -79,6 +82,9 @@ namespace torrent_flags {
 	// will eventually be taken out of upload-mode, regardless of how it
 	// got there. If it's important to manually control when the torrent
 	// leaves upload mode, don't make it auto managed.
+	//如果' ' upload_mode ' '被设置，种子将以上传模式初始化，这意味着它将不会发出任何片段请求。这种状态通常是在磁盘I / O错误时进入的，如果种子也是自动管理的，它将定期从这种状态中取出(参见' ' settings_pack::optimistic_disk_retry ' ')。
+	//这种模式可以用来避免在允许种子开始下载之前调整片段的优先级时的竞态条件。
+	//如果种子是自动管理的(' ' auto_managed ' ')，种子最终将退出上传模式，不管它是如何进入的。如果手动控制torrent离开上传模式很重要，不要让它自动管理。
 	constexpr torrent_flags_t upload_mode = 1_bit;
 
 	// determines if the torrent should be added in *share mode* or not.
@@ -99,6 +105,9 @@ namespace torrent_flags {
 	//
 	// The share mode has one setting, the share ratio target, see
 	// ``settings_pack::share_mode_target`` for more info.
+	//确定是否应该以“共享模式”添加种子。共享模式表示我们对下载洪流不感兴趣，而只是想提高我们的共享比例(即增加它)。在共享模式下启动的洪流会尽量避免下载的数量超过它上传到群集中的数量。如果群集对上传容量没有足够的需求，洪流将不会下载任何东西。该模式旨在安全添加任意数量的torrent，无需手动筛选，没有下载超过上传的风险。
+	//共享模式下的激流将所有片段的优先级设置为0，除了被下载的片段，当片段被决定下载时。这将影响进度条，它在大多数情况下可能被设置为“100% 完成”。不要在共享模式下更改文件或片段的优先级，这会使它无法工作。
+	//共享模式有一个设置，即共享比例目标，参见' ' settings_pack::share_mode_target ' '获取更多信息。
 	constexpr torrent_flags_t share_mode = 2_bit;
 
 	// determines if the IP filter should apply to this torrent or not. By
@@ -148,6 +157,7 @@ namespace torrent_flags {
 	// still, such as which pieces a peer has and whether it is in parole mode
 	// or "prefer whole pieces"-mode. Sequential mode is not ideal for streaming
 	// media. For that, see set_piece_deadline() instead.
+	//设置种子的顺序下载状态。在这种模式下，拾取器将先拾取索引号低的碎片，然后再拾取索引号高的碎片。真正被选中的棋子还取决于其他因素，比如同伴有哪些棋子，是处于假释模式还是“更喜欢整块棋子”模式。顺序模式对于流媒体来说并不理想。为此，请参阅set_piece_deadline()。
 	constexpr torrent_flags_t sequential_download = 9_bit;
 
 	// When this flag is set, the torrent will *force stop* whenever it

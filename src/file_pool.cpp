@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2006-2018, Arvid Norberg
 All rights reserved.
@@ -130,7 +130,8 @@ namespace libtorrent {
 			{
 				file_handle new_file = std::make_shared<file>();
 
-				std::string full_path = fs.file_path(file_index, p);
+				std::string full_path;
+				full_path = fs.file_path(file_index, p);
 				if (!new_file->open(full_path, m, ec))
 					return file_handle();
 #ifdef TORRENT_WINDOWS
@@ -153,7 +154,10 @@ namespace libtorrent {
 			ec = error_code(boost::system::errc::not_enough_memory, generic_category());
 			return file_handle();
 		}
-		std::string full_path = fs.file_path(file_index, p);
+
+		std::string full_path;
+		full_path = fs.file_path(file_index, p);
+
 		if (!e.file_ptr->open(full_path, m, ec))
 			return file_handle();
 #ifdef TORRENT_WINDOWS

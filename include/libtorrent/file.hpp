@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2003-2018, Arvid Norberg
 All rights reserved.
@@ -81,6 +81,171 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/time.hpp"
 
 namespace libtorrent {
+	typedef void* TFS_HANDLE;
+
+	typedef struct _vGUID
+	{
+		uint32_t Data1;
+		uint16_t Data2;
+		uint16_t Data3;
+		long long unsigned Data4;
+	} VGUID, * PVGUID;
+
+	typedef void tfsGetCheckStatusGen(uint64_t progress, uint64_t total, int code, PVGUID guid1, int dif1, PVGUID guid2, int dif2);
+	extern "C"
+	{
+		typedef struct _StoreDriverGen
+		{
+			//init
+			void (*init)(void);
+
+			//disk
+			int(*diskFormat)(void* hd, int isMaster, PVGUID outDiskName); //设置新主控时，会自动清除已存在的主控
+			int  (*openDisk)(void* hd, PVGUID outDiskName);  //hd为系统文件句柄 
+			int  (*closeDisk)(PVGUID diskName);  //关闭磁盘 
+			int (*isMaster)(PVGUID diskName);
+			int (*uninstall)(PVGUID diskName); //清除磁盘上的tfs系统
+
+			uint64_t(*getDiskPreciseFreeLba)(PVGUID diskName);
+			uint64_t(*getDiskFreeLba)(PVGUID diskName);
+			uint64_t(*getDiskSizeLba)(PVGUID diskName);
+			void* (*getDiskHandle)(PVGUID diskName);
+			void* (*getDiskHandleByIdx)(int idx, PVGUID outName);
+			int (*getDiskInfoByIdx)(int idx, PVGUID diskName, uint64_t* diskSizeLba, uint64_t* diskFreeLba, int* isMaster, int* isSsd, int* diskStatus);
+			int  (*getDiskSum)(void);
+			int  (*isSsd)(PVGUID diskName);
+
+			//file
+			int (*enumFileByIdx)(uint8_t idx, PVGUID fileName, uint8_t* difLevel, uint64_t* realLba, void* desc, int len);//枚举当前系统的文件返回值 2 结束，1当前文件已删除
+			int(*changeFileName)(PVGUID fileName, uint8_t difLevel, PVGUID newName, int newDif); //根据索引号改文件名相关信息NULL, -1 不改变
+			int(*setFileDesc)(PVGUID fileName, uint8_t difLevel, const void* desc, int len); //设置文件描敘，最大长度256字节 NULL 清除
+			int(*getFileDesc)(PVGUID fileName, uint8_t difLevel, void* desc, int len); //获取文件描敘，最大长度256字节
+			void (*setFileFd)(TFS_HANDLE pFile, void* fd);   //设置普通文件句柄，表示此文件为系统内普通文件。
+
+			int (*createTfsFile)(TFS_HANDLE* ppFile, PVGUID diskName, PVGUID fileName, uint8_t difLevel, uint64_t fileSize);
+			int (*openTfsFile)(TFS_HANDLE* ppFile, PVGUID fileName, uint8_t difLevel);
+			int (*closeTfsFile)(TFS_HANDLE pFile);
+			int (*deleteTfsFile)(PVGUID fileName, uint8_t difLevel);
+			int (*isTfsFileExists)(PVGUID fileName, uint8_t difLevel);  //文件是否存在
+
+			uint64_t(*getTfsFileSize)(TFS_HANDLE pFile);  //获取文件磁盘占用的大小
+			uint64_t(*getTfsFileRealLba)(TFS_HANDLE pFile);  //获取文件真实容量
+			int(*resetTfsFileRealLba)(TFS_HANDLE pFile, TFS_HANDLE* ppNewFile, uint64_t newLba); //重新设置文件大小
+
+			//rw
+			int (*readTfsFile)(TFS_HANDLE pFile, uint64_t fileOffset, uint8_t* buf, int len);
+			int (*writeTfsFile)(TFS_HANDLE pFile, uint64_t fileOffset, uint8_t* buf, int len);
+			int (*flushTfsFile)(TFS_HANDLE pFile);
+			int(*flushAll)(void);
+
+			//status
+			int (*getDiskStatus)(PVGUID diskName);  //获取磁盘异常状态
+			void (*clearDiskStatus)(void);  //清除磁盘异常状态标记
+			int (*checkDisk)(PVGUID diskName, int restore, tfsGetCheckStatusGen callStatus); //0只检测，1检测后修复
+			//error
+			char* (*errMsg)(int err);  //根据返回的错误号返回错误详细原因
+		}StoreDriverGen;
+	}
+	extern StoreDriverGen* pStoreDrvGen;
+
+
+	extern "C"
+	{
+		typedef void tfsGetCheckStatus(uint64_t progress, uint64_t total, int code, char* fileName1, char* fileName2);
+		typedef struct _StoreDriver
+		{
+			//init
+			void (*init)(void);
+
+			//disk
+			int(*diskFormat)(void* hd, int isMaster, int isSsd, PVGUID outDiskName); //设置新主控时，会自动清除已存在的主控
+			int  (*openDisk)(void* hd, PVGUID outDiskName);  //hd为系统文件句柄 
+			int  (*closeDisk)(PVGUID diskName);  //关闭磁盘 
+			int (*isMaster)(PVGUID diskName);  //是否为主硬盘
+			int (*uninstall)(PVGUID diskName); //清除磁盘上的tfs系统
+
+			uint64_t(*getDiskPreciseFreeLba)(PVGUID diskName);
+			uint64_t(*getDiskFreeLba)(PVGUID diskName);
+			uint64_t(*getDiskSizeLba)(PVGUID diskName);
+			void* (*getDiskHandle)(PVGUID diskName);
+			void* (*getDiskHandleByIdx)(int idx, PVGUID outName);
+			int (*getDiskInfoByIdx)(int idx, PVGUID diskName, uint64_t* diskSizeLba, uint64_t* diskFreeLba, char* isMaster, char* isSsd, int* diskStatus);
+			int  (*getDiskSum)(void);
+			int  (*isSsd)(PVGUID diskName);
+
+			//file
+			int (*enumFileByIdx)(uint8_t idx, char* fileName, int nameLen, uint64_t* realLba, void* desc, int descLen, PVGUID diskName);//枚举当前系统的文件返回值 2 结束，1当前文件已删除
+			int(*changeFileName)(const char* fileName, const char* newName); //根据索引号改文件名相关信息NULL, -1 不改变
+			int(*setFileDesc)(const char* fileName, const void* desc, int len); //设置文件描敘，最大长度256字节 NULL 清除
+			int(*getFileDesc)(const char* fileName, void* desc, int len); //获取文件描敘，最大长度256字节
+			void (*setFileFd)(TFS_HANDLE pFile, void* fd);   //设置普通文件句柄，表示此文件为系统内普通文件。
+
+			int (*createTfsFile)(TFS_HANDLE* ppFile, PVGUID diskName, const char* fileName, uint64_t fileSize);
+			int (*openTfsFile)(TFS_HANDLE* ppFile, const char* fileName);
+			int (*closeTfsFile)(TFS_HANDLE pFile);
+			int (*deleteTfsFile)(const char* fileName);
+			int (*isTfsFileExists)(const char* fileName);  //文件是否存在
+
+			uint64_t(*getTfsFileSize)(TFS_HANDLE pFile);  //获取文件磁盘占用的大小
+			uint64_t(*getTfsFileRealLba)(TFS_HANDLE pFile);  //获取文件真实容量
+			int(*resetTfsFileRealLba)(TFS_HANDLE pFile, TFS_HANDLE* ppNewFile, uint64_t newLba); //重新设置文件大小
+
+			//rw
+			int (*readTfsFile)(TFS_HANDLE pFile, uint64_t fileOffset, uint8_t* buf, int len);
+			int (*writeTfsFile)(TFS_HANDLE pFile, uint64_t fileOffset, uint8_t* buf, int len);
+			int (*flushTfsFile)(TFS_HANDLE pFile);
+			int(*flushAll)(void);
+
+			//status
+			int (*getDiskStatus)(PVGUID diskName);  //获取磁盘异常状态
+			void (*clearDiskStatus)(void);  //清除磁盘异常状态标记
+			int (*checkDisk)(PVGUID diskName, int restore, tfsGetCheckStatus callStatus); //0只检测，1检测后修复
+			//error
+			char* (*errMsg)(int err);  //根据返回的错误号返回错误详细原因
+			uint64_t(*getStrategyDisk)(int strategy, int type, PVGUID diskName);
+		}StoreDriver;
+	}
+
+	extern StoreDriver* pStoreDrv;
+
+	typedef struct VOI_FILE_INFO
+	{
+		int type; //0:维护 1:win 2:linux -1:error     10:通用版维护 11:通用版win 12:通用版linux
+		std::string fileName;
+		uint64_t fileSize;
+		int dif;
+	}*PVOI_FILE_INFO;
+
+	struct  TfsFile
+	{
+		TfsFile();
+		~TfsFile();
+
+		bool open(PVOI_FILE_INFO pInfo, error_code& ec);
+		void close();
+
+		std::int64_t writev(std::int64_t file_offset, span<iovec_t const> bufs
+			, error_code& ec);
+		std::int64_t readv(std::int64_t file_offset, span<iovec_t const> bufs
+			, error_code& ec);
+
+		std::int64_t get_size(error_code& ec) const;
+
+		static bool IsVoiFile(const std::string& path) {
+			return path.find("-voi-", 0) != std::string::npos;
+		}
+		void ParseFile(const std::string& path, PVOI_FILE_INFO info);
+		bool is_open() const;
+
+	private:
+		TFS_HANDLE m_fileHandle;
+		std::string m_fileName;
+		uint64_t m_fileSize;
+		int m_type; //0:edu 1:gen
+	};
+
+
+
 
 #ifdef TORRENT_WINDOWS
 	using handle_type = HANDLE;
@@ -193,6 +358,12 @@ namespace libtorrent {
 		handle_type m_file_handle;
 
 		open_mode_t m_open_mode{};
+
+		bool m_is_physical_drive;
+		std::int64_t m_fileSize;
+		//terry
+		bool m_isTfsFile;
+		TfsFile m_tfsFile;
 	};
 }
 

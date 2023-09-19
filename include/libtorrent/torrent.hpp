@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2003-2018, Arvid Norberg
 All rights reserved.
@@ -274,6 +274,12 @@ namespace libtorrent {
 		// the connections aren't initialized, to avoid
 		// them from altering the piece-picker before it
 		// has been initialized with files_checked().
+		/*
+		只要此torrent的连接尚未初始化，则此设置为false。
+		如果我们从一开始就有元数据，连接会立即初始化，如果我们没有元数据，它们会在files_checked（）之后立即初始化。
+		只要连接没有初始化，valid_resume_data（）就会返回false，
+		以避免它们在用files_checked（）初始化工件选择器之前更改它。		
+		*/
 		bool m_connections_initialized:1;
 
 		// is set to true when the torrent has
@@ -471,7 +477,9 @@ namespace libtorrent {
 
 		void set_sequential_download(bool sd);
 		bool is_sequential_download() const
-		{ return m_sequential_download || m_auto_sequential; }
+		{
+			return false;// m_sequential_download || m_auto_sequential;  //terry
+		}
 
 		void queue_up();
 		void queue_down();
@@ -1320,7 +1328,7 @@ namespace libtorrent {
 
 		// a queue of the most recent low-availability pieces we accessed on disk.
 		// These are good candidates for suggesting other peers to request from
-		// us.
+		// us.我们在磁盘上访问的最新低可用性片段的队列。这些都是很好的候选人，可以建议其他同行向我们提出要求
 		aux::suggest_piece m_suggest_pieces;
 
 		aux::vector<announce_entry> m_trackers;

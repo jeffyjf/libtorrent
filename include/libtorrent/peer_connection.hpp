@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2003-2018, Arvid Norberg
 All rights reserved.
@@ -110,6 +110,10 @@ namespace aux {
 		// request_time field is set to the current time.
 		// if the request has not been written to the send buffer, this field
 		// remains not_in_buffer.
+		//此请求进入发送缓冲区的字节数。
+		//每次发送缓冲区的一部分被传输时，这个偏移量将按发送的字节数递减。
+		//一旦该值降到0以下，则将request_time字段设置为当前时间。
+		//	如果请求尚未写入发送缓冲区，则该字段保持为not_in_buffer。
 		std::uint32_t send_buffer_offset:29;
 
 		// if any of these are set to true, this block
@@ -118,6 +122,7 @@ namespace aux {
 		// other peers to pick. This may be caused by
 		// it either timing out or being received
 		// unexpectedly from the peer
+		//如果其中任何一个被设置为true，这个块将不再在块选择器中分配，并开放给其他对等点来选择。这可能是由于它超时或意外地从对等端接收到
 		std::uint32_t not_wanted:1;
 		std::uint32_t timed_out:1;
 
@@ -126,7 +131,7 @@ namespace aux {
 		// request was queued. We only allow a single
 		// busy request at a time in each peer's queue
 		std::uint32_t busy:1;
-
+		//如果该块在排队时被另一个对等体请求，则设置忙碌标志。我们在每个对等队列中一次只允许一个忙请求
 		bool operator==(pending_block const& b) const
 		{
 			return b.block == block

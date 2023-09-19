@@ -168,6 +168,11 @@ namespace {
 	native_path_string convert_to_native_path_string(std::string const& path)
 	{
 #if TORRENT_USE_UNC_PATHS
+		if (path.find("\\\\.\\") != std::string::npos)
+		{
+			return convert_to_wstring(path);
+		}
+
 		// UNC paths must be absolute
 		// network paths are already UNC paths
 		std::string prepared_path = complete(path);
@@ -185,12 +190,41 @@ namespace {
 		, error_code& ec, int const flags)
 	{
 		ec.clear();
+
 		native_path_string f = convert_to_native_path_string(inf);
-#ifdef TORRENT_WINDOWS
+
+
+#ifdef TORRENT_WINDOWS //terry
+		//OutputDebugStringA("stat_file:");
+		//OutputDebugStringW(f.c_str());
+		//OutputDebugStringA("\n");
+
+		//if (f.find(L"CraneQcow{") != native_path_string::npos) {
+		//	//OutputDebugStringA("stat_file find \n");
+		//	native_path_string str = L"\\\\.\\CraneQcow";
+		//	int i = f.find(L"{");
+		//	int j = f.find(L"}");
+		//	str += f.substr(i, j - i + 1);
+		//	f = str;
+		//}
+		//OutputDebugStringA("stat_file opend:");
+		//OutputDebugStringW(f.c_str());
+		//OutputDebugStringA("\n");
+
+		if (f.find( L"\\\\.\\") != std::string::npos)
+		{
+			//OutputDebugStringA("stat_file return");
+			s->mode = 0;
+			return;
+		}
+
+
 
 		WIN32_FILE_ATTRIBUTE_DATA data;
 		if (!GetFileAttributesExW(f.c_str(), GetFileExInfoStandard, &data))
 		{
+			OutputDebugStringA("GetFileAttributesEx error\n");
+
 			ec.assign(GetLastError(), system_category());
 			TORRENT_ASSERT(ec);
 			return;
@@ -204,6 +238,7 @@ namespace {
 				| FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 			if (h == INVALID_HANDLE_VALUE)
 			{
+				OutputDebugStringA("CreateFileW error\n");
 				ec.assign(GetLastError(), system_category());
 				TORRENT_ASSERT(ec);
 				return;
@@ -749,6 +784,11 @@ namespace {
 #if TORRENT_USE_UNC_PATHS
 	std::string canonicalize_path(string_view f)
 	{
+		std::string s = f.to_string();
+		if (s.find("\\\\.\\") != std::string::npos) { //terry
+			return s;
+		}
+
 		std::string ret;
 		ret.resize(f.size());
 		char* write_cur = &ret[0];
@@ -820,6 +860,8 @@ namespace {
 
 	bool exists(std::string const& f, error_code& ec)
 	{
+		return true;
+
 		file_status s;
 		stat_file(f, &s, ec);
 		if (ec)

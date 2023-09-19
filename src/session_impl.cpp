@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2006-2018, Arvid Norberg, Magnus Jonsson
 All rights reserved.
@@ -4086,6 +4086,8 @@ namespace {
 		// boost, which are done immediately on a tracker response. These
 		// connections needs to be deducted from the regular connection attempt
 		// quota for this tick
+			//这个循环将以循环的方式将connection_speed“分发”给激流，这样每个激流都有相同的可能性连接到一个对等体
+			//Boost连接是由torrent连接Boost建立的连接，它在跟踪器响应时立即完成。这些连接需要从此tick的常规连接尝试配额中扣除
 		if (m_boost_connections > 0)
 		{
 			if (m_boost_connections > max_connections)
@@ -4112,7 +4114,7 @@ namespace {
 
 		// this logic is here to smooth out the number of new connection
 		// attempts over time, to prevent connecting a large number of
-		// sockets, wait 10 seconds, and then try again
+		// sockets, wait 10 seconds, and then try again这个逻辑是为了减少新连接尝试的次数，防止连接大量套接字，等待10秒，然后重试
 		if (m_settings.get_bool(settings_pack::smooth_connects) && max_connections > (limit+1) / 2)
 			max_connections = (limit + 1) / 2;
 
@@ -4151,9 +4153,11 @@ namespace {
 			if (t == nullptr)
 			{
 				if ((m_download_connect_attempts >= m_settings.get_int(
-						settings_pack::connect_seed_every_n_download)
+					settings_pack::connect_seed_every_n_download)
 					&& !want_peers_finished.empty())
-						|| want_peers_download.empty())
+					|| want_peers_download.empty())
+
+				//if (!want_peers_finished.empty() || want_peers_download.empty())
 				{
 					// pick a finished torrent to give a peer to
 					t = want_peers_finished[m_next_finished_connect_torrent];
@@ -4202,6 +4206,10 @@ namespace {
 		time_point const now = aux::time_now();
 		time_duration const unchoke_interval = now - m_last_choke;
 		m_last_choke = now;
+		//
+		//m_stats_counters.set_value(counters::num_unchoke_slots, settings_pack::unchoke_slots_limit);
+		//return;
+		//terry
 
 		// if we unchoke everyone, skip this logic
 		if (settings().get_int(settings_pack::choking_algorithm) == settings_pack::fixed_slots_choker
@@ -4270,7 +4278,7 @@ namespace {
 			// we don't know at what rate we can upload. If we have a
 			// measurement of the peak, use that + 10kB/s, otherwise
 			// assume 20 kB/s
-			max_upload_rate = std::max(20000, m_peak_up_rate + 10000);
+			max_upload_rate = std::max(120*1024*1024, m_peak_up_rate + 10000);
 			if (m_alerts.should_post<performance_alert>())
 				m_alerts.emplace_alert<performance_alert>(torrent_handle()
 					, performance_alert::bittyrant_with_no_uplimit);
@@ -4306,9 +4314,9 @@ namespace {
 			? std::max(1, allowed_upload_slots / 5) : unchoked_counter_optimistic;
 
 		int unchoke_set_size = allowed_upload_slots - num_opt_unchoke;
-
+		//unchoke_set_size = allowed_upload_slots; //terry
 		// go through all the peers and unchoke the first ones and choke
-		// all the other ones.
+		// all the other ones. 穿过所有的同伴，解开第一个，然后把其他的都掐死。
 		for (auto p : peers)
 		{
 			TORRENT_ASSERT(p != nullptr);

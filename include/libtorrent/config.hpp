@@ -293,7 +293,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #endif
 #define TORRENT_USE_RLIMIT 0
 #define TORRENT_HAS_FALLOCATE 0
-#define TORRENT_USE_UNC_PATHS 1
+#define TORRENT_USE_UNC_PATHS 1 //terry
 // preadv()/pwritev() are emulated on windows
 #define TORRENT_USE_PREADV 1
 
@@ -474,7 +474,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #ifndef TORRENT_USE_I2P
-#define TORRENT_USE_I2P 1
+#define TORRENT_USE_I2P 0 //terry
 #endif
 
 #ifndef TORRENT_AUTO_RETURN_TYPES
@@ -607,5 +607,7 @@ namespace libtorrent {}
 
 // create alias
 namespace lt = libtorrent;
+
+//#define TORRENT_DISABLE_SUPERSEEDING
 
 #endif // TORRENT_CONFIG_HPP_INCLUDED

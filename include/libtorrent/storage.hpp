@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2003-2018, Arvid Norberg
 All rights reserved.
@@ -173,7 +173,7 @@ namespace libtorrent {
 
 		// change the priorities of files. This is a fenced job and is
 		// guaranteed to be the only running function on this storage
-		// when called
+		// when called修改文件的优先级。这是一个隔离作业，并且在调用时保证是该存储上唯一正在运行的函数
 		virtual void set_file_priority(aux::vector<download_priority_t, file_index_t>& prio
 			, storage_error& ec) = 0;
 
@@ -368,6 +368,9 @@ namespace libtorrent {
 		// during startup, cache the results in here, and clear it all
 		// out once the torrent starts (to avoid getting stale results)
 		// each entry represents the size and timestamp of the file
+		/*为了避免在启动期间对每个文件多次调用stat()，将结果缓存在这里，
+		并在torrent启动后将其全部清除(以避免获得过时的结果)，
+		每个条目表示文件的大小和时间戳*/
 		mutable stat_cache m_stat_cache;
 
 		// helper function to open a file in the file pool with the right mode
@@ -390,6 +393,12 @@ namespace libtorrent {
 		// those files have their slot set to false in this vector.
 		// note that the vector is *sparse*, it's only allocated if a file has its
 		// entry set to false, and only indices up to that entry.
+		/*这是一个由file-index索引的数组。每个槽表示该文件是否为其启用了部件文件。
+		这用于与libtorrent的pre-partfile版本向后兼容。如果此向量为空，
+		则默认文件*不*使用partfile。在启动时，
+		在其原始位置找到的任何0优先级文件都被认为是老式的(pre-partfile) torrent存储，
+		并且这些文件在此向量中将其槽设置为false。请注意，向量是“稀疏的”，
+		只有当文件的条目设置为false时才分配它，并且只有索引到该条目。*/
 		aux::vector<bool, file_index_t> m_use_partfile;
 
 		// the file pool is a member of the disk_io_thread
