@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2003-2018, Arvid Norberg
 All rights reserved.
@@ -2458,19 +2458,20 @@ bool is_downloading_state(int const st)
 	void torrent::start_checking()
 	{
 		TORRENT_ASSERT(should_check_files());
-
 		int num_outstanding = settings().get_int(settings_pack::checking_mem_usage) * block_size()
-			/ m_torrent_file->piece_length();
+			/ m_torrent_file->piece_length();  //128k块 = 256
+
 		// if we only keep a single read operation in-flight at a time, we suffer
 		// significant performance degradation. Always keep at least 4 jobs
 		// outstanding per hasher thread
 		int const min_outstanding = 4
 			* std::max(1, settings().get_int(settings_pack::aio_threads)
-				/ disk_io_thread::hasher_thread_divisor);
+				/ disk_io_thread::hasher_thread_divisor);  //4个io线程对于1个hasher线程 16个io线程4个哈希线程
 		if (num_outstanding < min_outstanding) num_outstanding = min_outstanding;
+		//if (num_outstanding > 2) num_outstanding = 2;
 
 		// we might already have some outstanding jobs, if we were paused and
-		// resumed quickly, before the outstanding jobs completed
+		// resumed quickly, before the outstanding jobs completed 如果我们在未完成的工作完成之前暂停并快速恢复，我们可能已经有一些未完成的工作了
 		if (m_checking_piece >= m_torrent_file->end_piece())
 		{
 #ifndef TORRENT_DISABLE_LOGGING
@@ -2479,12 +2480,11 @@ bool is_downloading_state(int const st)
 #endif
 			return;
 		}
-
 		// subtract the number of pieces we already have outstanding
-		num_outstanding -= (static_cast<int>(m_checking_piece)
+		num_outstanding -= (static_cast<int>(m_checking_piece)  //10G文件m_checking_piece=27431
 			- static_cast<int>(m_num_checked_pieces));
-		if (num_outstanding < 0) num_outstanding = 0;
 
+		if (num_outstanding < 0) num_outstanding = 0; //通常 = 0，因为m_checking_piece比num_outstanding大
 		for (int i = 0; i < num_outstanding; ++i)
 		{
 			m_ses.disk_thread().async_hash(m_storage, m_checking_piece
@@ -2501,7 +2501,7 @@ bool is_downloading_state(int const st)
 	}
 
 	// This is only used for checking of torrents. i.e. force-recheck or initial checking
-	// of existing files
+	// of existing files这只用于检查流。即强制重新检查或初始检查现有文件
 	void torrent::on_piece_hashed(piece_index_t const piece
 		, sha1_hash const& piece_hash, storage_error const& error) try
 	{
@@ -2514,7 +2514,6 @@ bool is_downloading_state(int const st)
 		state_updated();
 
 		++m_num_checked_pieces;
-
 		if (error)
 		{
 			if (error.ec == boost::system::errc::no_such_file_or_directory
@@ -9635,7 +9634,7 @@ bool is_downloading_state(int const st)
 
 		// assume that the seeds are about as fast as us. During the time
 		// we can download one piece, and upload one piece, each seed
-		// can upload two pieces.
+		// can upload two pieces.assume that the seeds are about as fast as us. During the time we can download one piece, and upload one piece, each seed can upload two pieces.
 		missing_pieces -= 2 * num_seeds;
 
 		if (missing_pieces <= 0) return;

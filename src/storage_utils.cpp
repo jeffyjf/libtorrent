@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2003-2016, Arvid Norberg
 All rights reserved.
@@ -149,7 +149,7 @@ namespace libtorrent { namespace aux {
 		{
 			// the number of bytes left to read in the current file (specified by
 			// file_index). This is the minimum of (file_size - file_offset) and
-			// bytes_left.
+			// bytes_left.当前文件中剩余要读取的字节数(由file_index指定)。这是(file_size - file_offset)和bytes_left的最小值
 			int file_bytes_left = bytes_left;
 			if (file_offset + file_bytes_left > files.file_size(file_index))
 				file_bytes_left = std::max(static_cast<int>(files.file_size(file_index) - file_offset), 0);

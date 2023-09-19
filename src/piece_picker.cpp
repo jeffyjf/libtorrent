@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2003-2018, Arvid Norberg
 All rights reserved.
@@ -1925,6 +1925,21 @@ namespace {
 	// the return value is a combination of picker_flags_t,
 	// indicating which path thought the picker we took to arrive at the
 	// returned block picks.
+
+	//碎片描述了我们请求的同伴拥有哪些碎片。Interesting_blocks是一个out参数，它将用对等端拥有的感兴趣的块(最多)num_blocks填充。如果这个对等体应该下载整个块，而不是尝试从其他对等体的同一块下载块，则可以设置prefer_continuous_blocks。peer参数是我们要从中选取片段的peer的torrent_peer。这是在下载整个片段时使用的，以便只从同一对等体正在下载的同一片段中选择。
+	//选项有:
+	//*rarest_first
+	//先挑最稀有的
+	//* 反向
+	//反向取片。首先选择最常见的部分或最后一个部分(如果选择顺序的)
+	//* 顺序
+	//按顺序下载作品
+	//* on_parole
+	//同伴处于假释状态，只能从同一同伴那里下载和请求完整的片段
+	//* prioritize_partials
+	//首先从下载片段中选择块
+	//只能设置rarest_first或sequential中的一个
+	//返回值是picker_flags_t的组合，它指示了我们使用哪条路径到达返回的块选择器。
 	picker_flags_t piece_picker::pick_pieces(typed_bitfield<piece_index_t> const& pieces
 		, std::vector<piece_block>& interesting_blocks, int num_blocks
 		, int prefer_contiguous_blocks, torrent_peer* peer

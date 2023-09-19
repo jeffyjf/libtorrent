@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2007-2018, Arvid Norberg, Steven Siloti
 All rights reserved.
@@ -1308,7 +1308,7 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 		std::unique_lock<std::mutex> l(m_cache_mutex);
 
 		int const evict = m_disk_cache.num_to_evict(iov_len);
-		if (evict > 0) m_disk_cache.try_evict_blocks(evict);
+		if (evict > 0) m_disk_cache.try_evict_blocks(evict); //驱逐
 
 		cached_piece_entry* pe = m_disk_cache.find_piece(j);
 		if (pe == nullptr)
@@ -2147,7 +2147,6 @@ constexpr disk_job_flags_t disk_interface::cache_hit;
 		// we're not using a cache. This is the simple path
 		// just read straight from the file
 		TORRENT_ASSERT(m_magic == 0x1337);
-
 		int const piece_size = j->storage->files().piece_size(j->piece);
 		int const blocks_in_piece = (piece_size + default_block_size - 1) / default_block_size;
 		open_mode_t const file_flags = file_flags_for_job(j

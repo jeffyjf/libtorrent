@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2003-2018, Arvid Norberg
 All rights reserved.
@@ -239,6 +239,8 @@ namespace libtorrent {
 		// this state. Every time m_torrent->is_finished()
 		// is different from this state, we need to
 		// recalculate the connect candidates.
+		//这是上次我们重新计算连接候选数时的洪流状态。由于种子(或仅上传)对等点在我们完成时不是连接候选节点，所以集合取决于此状态。
+		//每次m_torrent->is_finished()与此状态不同时，我们需要重新计算连接候选对象。
 		std::uint32_t m_finished:1;
 
 		// since the torrent_peer list can grow too large

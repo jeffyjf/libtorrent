@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2012-2018, Arvid Norberg
 All rights reserved.
@@ -650,6 +650,7 @@ namespace aux {
 			// is high, and there are no or small benefits of doing so. For
 			// instance, if no nodes are behind a firewall or a NAT, seeds don't
 			// need to make outgoing connections.
+				//' seeding_outgoing_connections ' '决定了种子(和已完成的)流是否应该尝试进行传出连接。在非常特定的应用程序中，它可能被设置为false，在这些应用程序中，进行传出连接的成本很高，并且这样做没有或只有很小的好处。例如，如果防火墙或NAT后面没有节点，种子就不需要进行传出连接。
 			seeding_outgoing_connections,
 
 			// when this is true, libtorrent will not attempt to make outgoing
@@ -743,7 +744,7 @@ namespace aux {
 			support_merkle_torrents,
 
 			// if this is true, the number of redundant bytes is sent to the
-			// tracker
+			// tracker如果为真，则将冗余字节数发送给跟踪器
 			report_redundant_bytes,
 
 			// if this is true, libtorrent will fall back to listening on a port
@@ -1068,6 +1069,11 @@ namespace aux {
 			// high capacity connections, setting this higher can improve upload
 			// performance and disk throughput. Setting it too high may waste RAM
 			// and create a bias towards read jobs over write jobs.
+				//``send_buffer_low_watermark`最小发送缓冲区目标大小（发送缓冲区包括等待从磁盘读取的字节）。为了获得良好和快速的播种性能，请将其设置得相当高，至少适合几个块。这基本上是初始窗口大小，它将决定我们提高发送速率的速度
+
+				//如果发送缓冲区的字节数小于sendd_buffer_watermark`，我们将读取另一个16kiB的块。如果设置得太小，上传速率容量将受到影响。如果设置得太高，内存将被浪费。在上传速率较低的情况下，实际水印可能低于此值，这是上限。
+
+				//将当前到对等端的上传速率乘以该因子，以获得发送缓冲区水印。该系数指定为百分比。i、 e.50->0.5此产品被限制为“send_buffer_watermark”设置，不超过最大值。对于高速上传，此值应设置为大于100。对于高容量连接，将此值设置得更高可提高上传性能和磁盘吞吐量。将其设置得太高可能会浪费RAM，并导致偏向于读作业而不是写作业。
 			send_buffer_low_watermark,
 			send_buffer_watermark,
 			send_buffer_watermark_factor,
@@ -1252,7 +1258,7 @@ namespace aux {
 			// ``max_paused_peerlist_size`` is the max peer list size used for
 			// torrents that are paused. This can be used to save memory for paused
 			// torrents, since it's not as important for them to keep a large peer
-			// list.
+			// list.' max_paused_peerlist_size ' '是用于暂停流的最大对等体列表大小。这可以用来为暂停的洪流节省内存，因为对它们来说保持一个大的对等体列表并不重要
 			max_peerlist_size,
 			max_paused_peerlist_size,
 
@@ -1321,7 +1327,7 @@ namespace aux {
 			// torrents.
 			//
 			// You can explicitly take a torrent out of upload only mode using
-			// set_upload_mode().
+			// set_upload_mode().可以显式地将种子从仅上传模式中去掉
 			optimistic_disk_retry,
 
 			// ``max_suggest_pieces`` is the max number of suggested piece indices
@@ -1415,6 +1421,7 @@ namespace aux {
 			// need to download the rarest piece, it's impossible to download a
 			// single piece and upload it more than 3 times. If the
 			// share_mode_target is set to more than 3, nothing is downloaded.
+				//' ' share_mode_target ' '指定共享模式流的目标共享比例。如果设置为3，我们将尝试上传3倍于下载的内容。如果设置得太高，你可能就不会下载任何东西(也不会影响你的共享比例)。将其设置为低于2是没有任何意义的。例如，如果只有3个对等体需要下载最稀有的碎片，那么下载一个碎片并上传超过3次是不可能的。如果share_mode_target值大于3，则不会下载任何内容。
 			share_mode_target,
 
 			// ``upload_rate_limit`` and ``download_rate_limit`` sets
@@ -1533,6 +1540,7 @@ namespace aux {
 			// connections are TCP. This works best if uTP connections are not
 			// rate limited by the global rate limiter (which they aren't by
 			// default).
+				//' ' mixed_mode_algorithm ' '决定当存在uTP连接时如何处理TCP连接。由于uTP被设计为屈服于TCP，所以在使用同时具有TCP和uTP连接的群集时存在一个固有的问题。如果什么都不做，uTP连接经常会被TCP连接耗尽带宽。该模式为' ' prefer_tcp ' '。' ' peer_proportion ' '模式只查看当前的吞吐量和速率，根据TCP连接的数量将所有TCP连接限制为其比例份额。如果uTP连接不受全局速率限制器的速率限制(默认情况下不是这样)，那么这种方法效果最好。
 			mixed_mode_algorithm,
 
 			// ``listen_queue_size`` is the value passed in to listen() for the
@@ -1584,6 +1592,7 @@ namespace aux {
 			// the number of blocks to keep outstanding at any given time when
 			// checking torrents. Higher numbers give faster re-checks but uses
 			// more memory. Specified in number of 16 kiB blocks
+			//在检查洪流时，在任何给定时间保持未完成的块的数量。数值越大，复查速度越快，但使用的内存越多。指定的数量为16 kiB块
 			checking_mem_usage,
 
 			// if set to > 0, pieces will be announced to other peers before they
@@ -1671,6 +1680,7 @@ namespace aux {
 			// downloading torrents to connect a peer each, and every n:th
 			// connection attempt, a finished torrent is picked to be allowed to
 			// connect to a peer. This setting controls n.
+				//当涉及到建立对等连接时，该设置控制下载的种子优先级高于播种或完成的种子优先级。对等连接受connection_speed和半开放连接限制的限制。这使得对等连接成为一种有限的资源。默认情况下，仍有片段可下载的种子会优先下载，以避免许多种子种子使用大多数连接尝试，并且每隔一段时间只给下载的种子一个对等体。Libtorrent将循环下载的种子连接一个对等体，每n次连接尝试，一个完成的种子被选中，允许连接到一个对等体。此设置控制n。
 			connect_seed_every_n_download,
 
 			// the max number of bytes to allow an HTTP response to be when

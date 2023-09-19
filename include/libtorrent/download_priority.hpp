@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2017, Arvid Norberg
 All rights reserved.
@@ -40,7 +40,7 @@ namespace libtorrent {
 using download_priority_t = aux::strong_typedef<std::uint8_t, struct download_priority_tag>;
 
 // Don't download the file or piece. Partial pieces may still be downloaded when
-// setting file priorities.
+// setting file priorities.不要下载文件或片段。在设置文件优先级时，部分片段仍然可能被下载。
 constexpr download_priority_t dont_download{0};
 
 // The default priority for files and pieces.

@@ -179,6 +179,7 @@ namespace aux {
 	class TORRENT_EXPORT session : public session_handle
 	{
 	public:
+		void SetTfsApi(void* _pStoreDrv);
 
 		// Constructs the session objects which acts as the container of torrents.
 		// In order to avoid a race condition between starting the session and

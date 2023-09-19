@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2003-2018, Arvid Norberg
 All rights reserved.
@@ -153,7 +153,6 @@ static_assert(sizeof(lseek(0, 0, 0)) >= 8, "64 bit file operations are required"
 #if TORRENT_USE_PREADV
 # if defined TORRENT_WINDOWS
 namespace {
-
 	// wrap the windows function in something that looks
 	// like preadv() and pwritev()
 
@@ -329,6 +328,202 @@ namespace {
 
 namespace libtorrent {
 
+	//static void WirteLogFile(const char* str)
+	//{
+	//	std::fstream fs;
+	//	fs.open("u:\\log.log", std::ios::app);
+	//	fs << str;
+	//}
+	static void WriteLog(const char* str, ...)
+	{
+//		char szEntry[1024];
+//		va_list args;
+//		va_start(args, str);
+//		vsprintf(szEntry, str, args);
+//
+//#ifdef TORRENT_WINDOWS
+//		OutputDebugStringA(szEntry);
+//		//	WirteLogFile(szEntry);
+//#else
+//		printf("%s", szEntry);
+//#endif
+	}
+
+	StoreDriverGen* pStoreDrvGen = NULL;
+	StoreDriver* pStoreDrv = NULL;
+
+	std::vector<std::string> voi_string_split(const std::string& src, const std::string& sep)
+	{
+		std::vector<std::string> vs;
+		size_t start = 0, pos;
+
+		while ((pos = src.find(sep, start)) != std::string::npos) {
+			vs.push_back(src.substr(start, pos - start));
+			start = pos + sep.size();
+		}
+		vs.push_back(src.substr(start));
+		return vs;
+	}
+
+	int StrToGUID(const char* guid, PVGUID _guid)
+	{
+		long long unsigned data4_1 = 0;
+		long long unsigned data4_2 = 0;
+
+		int ret = sscanf(guid, "%x-%hx-%hx-%llx-%llx",
+			&_guid->Data1, &_guid->Data2, &_guid->Data3, &data4_1,
+			&data4_2);
+
+		_guid->Data4 = (data4_1 << 48) + data4_2;
+		return ret;
+	}
+
+	TfsFile::TfsFile() : m_fileHandle(NULL)
+	{}
+
+	TfsFile::~TfsFile()
+	{
+		close();
+	}
+
+	bool TfsFile::open(PVOI_FILE_INFO pInfo, error_code& ec)
+	{
+		close();
+
+		m_fileName = pInfo->fileName;
+		m_fileSize = pInfo->fileSize;
+		m_type = pInfo->type >= 10;
+		int ret_code = 0;
+		if (m_type)//gen
+		{
+			//WriteLog("gen: open\n");
+			VGUID name;
+			StrToGUID(m_fileName.c_str(), &name);
+			ret_code = pStoreDrvGen->openTfsFile(&m_fileHandle, &name,pInfo->dif);
+			if (ret_code)
+			{
+				WriteLog("gen: open TfsFile error code: %d, msg: %s\n", ret_code, pStoreDrv->errMsg(ret_code));
+				m_fileHandle = NULL;
+				ec = error_code(boost::system::errc::bad_file_descriptor, generic_category());
+				TORRENT_ASSERT(ec);
+				return false;
+			} 
+		}
+		else {
+
+			//WriteLog("edu: open\n");
+			ret_code = pStoreDrv->openTfsFile(&m_fileHandle, m_fileName.c_str());
+			if (ret_code)
+			{
+				WriteLog("open TfsFile error code: %d, msg: %s\n", ret_code, pStoreDrv->errMsg(ret_code));
+				m_fileHandle = NULL;
+				ec = error_code(boost::system::errc::bad_file_descriptor, generic_category());
+				TORRENT_ASSERT(ec);
+				return false;
+			}
+		}
+		TORRENT_ASSERT(is_open());
+		return true;
+	}
+
+	void TfsFile::close()
+	{
+		if (!is_open()) return;
+		int ret;
+		if (m_type) ret = pStoreDrvGen->closeTfsFile(m_fileHandle);
+		else ret = pStoreDrv->closeTfsFile(m_fileHandle);
+		if (ret)
+		{
+			WriteLog("close TfsFile error ret:%d \n", ret);
+		}
+		if (m_type) pStoreDrvGen->flushAll();
+		else pStoreDrv->flushAll();
+		m_fileHandle = NULL;
+	}
+
+	std::int64_t TfsFile::readv(std::int64_t file_offset, span<iovec_t const> bufs
+		, error_code& ec)
+	{
+		if (m_fileHandle == NULL)
+		{
+			WriteLog("TfsFile readv:m_fileHandle == NULL  \n");
+			ec = error_code(boost::system::errc::bad_file_descriptor, generic_category());
+			return -1;
+		}
+		ec.clear();
+		std::int64_t ret = 0;
+		for (auto i : bufs)
+		{
+			int len = static_cast<std::size_t>(i.size());
+			int tmp_ret;
+			if (m_type) tmp_ret = pStoreDrvGen->readTfsFile(m_fileHandle, file_offset, (uint8_t*)i.data(), len);
+			else  tmp_ret = pStoreDrv->readTfsFile(m_fileHandle, file_offset, (uint8_t*)i.data(), len);
+
+			if (tmp_ret) {
+				WriteLog("voi read error, ret: %d\n", tmp_ret);
+				ec = error_code(boost::system::errc::io_error, generic_category());
+				return -1;
+			}
+			file_offset += len;
+			ret += len;
+		}
+		return ret;
+	}
+
+	int s_size(span<iovec_t const> bufs)
+	{
+		std::size_t size = 0;
+		for (auto buf : bufs) size += buf.size();
+		return int(size);
+	}
+
+	std::int64_t TfsFile::writev(std::int64_t file_offset, span<iovec_t const> bufs
+		, error_code& ec)
+	{
+		if (m_fileHandle == NULL)
+		{
+			WriteLog("TfsFile writev:m_fileHandle == NULL  \n");
+			ec = error_code(boost::system::errc::bad_file_descriptor, generic_category());
+			return -1;
+		}
+		ec.clear();
+		std::int64_t ret = 0;
+		for (auto i : bufs)
+		{
+			int len = static_cast<std::size_t>(i.size());
+
+			int tmp_ret;
+			if (m_type) tmp_ret = pStoreDrvGen->writeTfsFile(m_fileHandle, file_offset, (uint8_t*)i.data(), len);
+			else  tmp_ret = pStoreDrv->writeTfsFile(m_fileHandle, file_offset, (uint8_t*)i.data(), len);
+
+			if (tmp_ret) {
+				WriteLog("voi write error, ret: %d\n", tmp_ret);
+				ec = error_code(boost::system::errc::io_error, generic_category());
+				return -1;
+			}
+			file_offset += len;
+			ret += len;
+		}
+		return ret;
+	}
+
+	bool TfsFile::is_open() const
+	{
+		return m_fileHandle != NULL;
+	}
+
+	std::int64_t TfsFile::get_size(error_code& ec) const
+	{
+		if (m_fileHandle == NULL)
+		{
+			ec = error_code(boost::system::errc::bad_file_descriptor, generic_category());
+			return -1;
+		}
+		return m_fileSize;
+	}
+
+
+
 static_assert(!(open_mode::rw_mask & open_mode::sparse), "internal flags error");
 static_assert(!(open_mode::rw_mask & open_mode::attribute_mask), "internal flags error");
 static_assert(!(open_mode::sparse & open_mode::attribute_mask), "internal flags error");
@@ -465,18 +660,26 @@ static_assert(!(open_mode::sparse & open_mode::attribute_mask), "internal flags 
 #endif // TORRENT_WINDOWS
 
 
+
 #ifdef TORRENT_WINDOWS
 	void acquire_manage_volume_privs();
 #endif
 
-	file::file() : m_file_handle(INVALID_HANDLE_VALUE)
+	file::file() : m_file_handle(INVALID_HANDLE_VALUE), m_is_physical_drive(false), m_fileSize(0L), m_isTfsFile(false)
 	{}
 
 	file::file(file&& f) noexcept
 		: m_file_handle(f.m_file_handle)
 		, m_open_mode(f.m_open_mode)
+		, m_is_physical_drive(f.m_is_physical_drive)
+		, m_fileSize(f.m_fileSize)
+		, m_isTfsFile(f.m_isTfsFile)
+		, m_tfsFile(f.m_tfsFile)
 	{
 		f.m_file_handle = INVALID_HANDLE_VALUE;
+		f.m_isTfsFile = false;
+		f.m_is_physical_drive = false;
+		f.m_fileSize = 0;
 	}
 
 	file& file::operator=(file&& f)
@@ -484,7 +687,16 @@ static_assert(!(open_mode::sparse & open_mode::attribute_mask), "internal flags 
 		file tmp(std::move(*this)); // close at end of scope
 		m_file_handle = f.m_file_handle;
 		m_open_mode = f.m_open_mode;
+		m_is_physical_drive = f.m_is_physical_drive;
+		m_fileSize = f.m_fileSize;
+		m_isTfsFile = f.m_isTfsFile;
+		m_tfsFile = f.m_tfsFile;
+
+
 		f.m_file_handle = INVALID_HANDLE_VALUE;
+		f.m_isTfsFile = false;
+		f.m_is_physical_drive = false;
+		f.m_fileSize = 0;
 		return *this;
 	}
 
@@ -501,11 +713,95 @@ static_assert(!(open_mode::sparse & open_mode::attribute_mask), "internal flags 
 		close();
 	}
 
+	void ParseFile(const std::string& path, PVOI_FILE_INFO pInfo)
+	{
+		std::string str;
+		std::vector<std::string> params;
+		if (path.find("\\")!= std::string::npos)
+			params = voi_string_split(path, "\\");
+		else
+			params = voi_string_split(path, "/");
+		for (size_t i = 0; i < params.size(); i++)
+		{
+			str = params[i];
+			if (str.find("-voi-") != std::string::npos)
+			{
+				break;
+			}
+		}
+		//WriteLog("find path  %s\n", str.c_str());
+
+		params = voi_string_split(str, ",");
+		if (params.size() != 5) {
+			WriteLog("voi path error %s\n", str.c_str());
+			return;
+		}
+		pInfo->type = std::stoul(params[1]);
+		//WriteLog("type: %d\n", pInfo->type);
+
+		pInfo->fileName = params[2];
+		//WriteLog("filename: %s\n", pInfo->fileName.c_str());
+		pInfo->dif = std::stoull(params[3]);
+		//WriteLog("dif: %s\n", params[3].c_str());
+
+		pInfo->fileSize = std::stoull(params[4]);
+		//WriteLog("file size: %ld(G)\n", pInfo->fileSize / 1024/1024/1024);
+	}
+
 	bool file::open(std::string const& path, open_mode_t mode, error_code& ec)
 	{
 		close();
-		native_path_string file_path = convert_to_native_path_string(path);
+		VOI_FILE_INFO info; 
+		std::string file_path = path;
+		//WriteLog("file::open1: %s\n", path.c_str());
+		if (TfsFile::IsVoiFile(path))
+		{
+			ParseFile(path, &info);
+			if (info.type < 0)
+			{
+				WriteLog("type error\n");
+				ec = error_code(boost::system::errc::bad_file_descriptor, generic_category());
+				return false;
+			}
+			
+			m_fileSize = info.fileSize;
+			if (info.type == 0 || info.type == 10)
+			{
+				//WriteLog("m_tfsFile.open\n");
+				m_isTfsFile = true;
+				m_is_physical_drive = true;
+				return m_tfsFile.open(&info, ec);
+			}
 
+			if (info.type == 1)
+			{
+				m_is_physical_drive = true;
+				std::string str = "\\\\.\\CraneQcow{" + info.fileName + "}";
+				//WriteLog("win open: %s\n", str.c_str());
+				file_path = str;
+			}
+			if (info.type == 11)
+			{
+				m_is_physical_drive = true;
+				std::string str = "\\\\.\\CraneQcow" + std::to_string(info.dif) + "-{" + info.fileName + "}";
+				file_path = str;
+				//WriteLog("win open: %s\n", file_path.c_str());
+			}
+			if (info.type == 2)
+			{
+				m_is_physical_drive = true;
+				std::string str = "/dev/" + info.fileName;
+				file_path = str;
+				//WriteLog("linux open: %s\n", file_path.c_str());
+			}
+			if (info.type == 12)
+			{
+				m_is_physical_drive = true;
+				std::string str = "/dev/{" + info.fileName + "}" +std::to_string(info.dif);
+				file_path = str;
+				//WriteLog("linux open: %s\n", file_path.c_str());
+			}
+		}
 #ifdef TORRENT_WINDOWS
 
 		struct win_open_mode_t
@@ -553,12 +849,13 @@ static_assert(!(open_mode::sparse & open_mode::attribute_mask), "internal flags 
 			std::call_once(flag, acquire_manage_volume_privs);
 		}
 
-		handle_type handle = CreateFileW(file_path.c_str(), m.rw_mode
-			, FILE_SHARE_READ | FILE_SHARE_WRITE
-			, 0, m.create_mode, flags, 0);
+		handle_type handle = CreateFileA(file_path.c_str(), m.rw_mode
+				, FILE_SHARE_READ | FILE_SHARE_WRITE
+				, 0, m.create_mode, flags, 0);
 
 		if (handle == INVALID_HANDLE_VALUE)
 		{
+			WriteLog("bt open error...\n");
 			ec.assign(GetLastError(), system_category());
 			TORRENT_ASSERT(ec);
 			return false;
@@ -605,7 +902,7 @@ static_assert(!(open_mode::sparse & open_mode::attribute_mask), "internal flags 
 			;
 
 		handle_type handle = ::open(file_path.c_str()
-			, mode_array[static_cast<std::uint32_t>(mode & open_mode::rw_mask)] | open_mode
+			, mode_array[static_cast<std::uint32_t>(mode & open_mode::rw_mask)] | open_mode | 0x800 //terry
 			, permissions);
 
 #ifdef O_NOATIME
@@ -617,7 +914,7 @@ static_assert(!(open_mode::sparse & open_mode::attribute_mask), "internal flags 
 			mode &= ~open_mode::no_atime;
 			open_mode &= ~O_NOATIME;
 			handle = ::open(file_path.c_str()
-				, mode_array[static_cast<std::uint32_t>(mode & open_mode::rw_mask)] | open_mode
+				, mode_array[static_cast<std::uint32_t>(mode & open_mode::rw_mask)] | open_mode | 0x800 //terry
 				, permissions);
 		}
 #endif
@@ -673,6 +970,10 @@ static_assert(!(open_mode::sparse & open_mode::attribute_mask), "internal flags 
 
 	bool file::is_open() const
 	{
+		if (m_isTfsFile)
+		{
+			return m_tfsFile.is_open();
+		}
 		return m_file_handle != INVALID_HANDLE_VALUE;
 	}
 
@@ -727,6 +1028,13 @@ typedef struct _FILE_ALLOCATED_RANGE_BUFFER {
 
 	void file::close()
 	{
+		m_is_physical_drive = false;
+		if (m_isTfsFile)
+		{
+			m_tfsFile.close();
+			return;
+		}
+
 		if (!is_open()) return;
 
 #ifdef TORRENT_WINDOWS
@@ -796,6 +1104,10 @@ typedef struct _FILE_ALLOCATED_RANGE_BUFFER {
 		, iovec_t& tmp)
 	{
 		auto const buf_size = bufs_size(bufs);
+	/*	std::size_t mode_size = buf_size % 512;
+		if (mode_size) {
+			buf_size += (512 - mode_size);
+		}*/
 		auto buf = new char[std::size_t(buf_size)];
 		tmp = { buf, buf_size };
 		bufs = span<iovec_t const>(tmp);
@@ -813,6 +1125,10 @@ typedef struct _FILE_ALLOCATED_RANGE_BUFFER {
 		, iovec_t& tmp)
 	{
 		auto const buf_size = bufs_size(bufs);
+		//std::size_t mode_size = buf_size % 512;
+		//if (mode_size) {
+		//	buf_size += (512 - mode_size);
+		//}
 		auto buf = new char[std::size_t(buf_size)];
 		gather_copy(bufs, buf);
 		tmp = { buf, buf_size };
@@ -950,6 +1266,12 @@ namespace {
 	std::int64_t file::readv(std::int64_t file_offset, span<iovec_t const> bufs
 		, error_code& ec, open_mode_t flags)
 	{
+
+		if (m_isTfsFile)
+		{
+			return m_tfsFile.readv(file_offset, bufs, ec);
+		}
+
 		if (m_file_handle == INVALID_HANDLE_VALUE)
 		{
 #ifdef TORRENT_WINDOWS
@@ -964,7 +1286,12 @@ namespace {
 		TORRENT_ASSERT(!bufs.empty());
 		TORRENT_ASSERT(is_open());
 
+		//int ibufs_size = bufs_size(bufs);
+	/*	if (is_physical_drive && (ibufs_size % 512)) {
+			flags |= open_mode::coalesce_buffers;
+		}*/
 		// there's no point in coalescing single buffer writes
+		//else 
 		if (bufs.size() == 1)
 		{
 			flags &= ~open_mode::coalesce_buffers;
@@ -991,7 +1318,7 @@ namespace {
 			coalesce_read_buffers_end(bufs
 				, tmp.data(), !ec);
 
-		return ret;
+		return ret;// > 0 ? ibufs_size : ret;
 	}
 
 	// This has to be thread safe, i.e. atomic.
@@ -1000,6 +1327,12 @@ namespace {
 	std::int64_t file::writev(std::int64_t file_offset, span<iovec_t const> bufs
 		, error_code& ec, open_mode_t flags)
 	{
+
+		if (m_isTfsFile)
+		{
+			return m_tfsFile.writev(file_offset, bufs, ec);
+		}
+
 		if (m_file_handle == INVALID_HANDLE_VALUE)
 		{
 #ifdef TORRENT_WINDOWS
@@ -1016,7 +1349,12 @@ namespace {
 
 		ec.clear();
 
+		//int ibuf_size = bufs_size(bufs);
+		//if (is_physical_drive && (ibuf_size % 512)) {
+		//	flags |= open_mode::coalesce_buffers;
+		//}
 		// there's no point in coalescing single buffer writes
+		//else 
 		if (bufs.size() == 1)
 		{
 			flags &= ~open_mode::coalesce_buffers;
@@ -1054,7 +1392,7 @@ namespace {
 			}
 		}
 #endif
-		return ret;
+		return ret;// > 0 ? ibuf_size : ret;
 	}
 
 #ifdef TORRENT_WINDOWS
@@ -1121,6 +1459,11 @@ namespace {
 
 	bool file::set_size(std::int64_t s, error_code& ec)
 	{
+
+		if (m_isTfsFile) return true;
+		
+		if (m_is_physical_drive) return true;
+
 		TORRENT_ASSERT(is_open());
 		TORRENT_ASSERT(s >= 0);
 
@@ -1243,6 +1586,15 @@ namespace {
 
 	std::int64_t file::get_size(error_code& ec) const
 	{
+		if (m_isTfsFile)
+		{
+			return m_tfsFile.get_size(ec);
+		}
+		
+    	if (m_is_physical_drive) {
+			return m_fileSize;
+		}
+
 #ifdef TORRENT_WINDOWS
 		LARGE_INTEGER file_size;
 		if (!GetFileSizeEx(native_handle(), &file_size))

@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2012-2018, Arvid Norberg
 All rights reserved.
@@ -71,6 +71,17 @@ namespace libtorrent {
 	//   always be of the same address family
 	//
 	// * all IP addresses are in network byte order when hashed
+	/*
+	1.如果IP地址相同，则以16位网络顺序二进制表示对端口进行散列，先按最低顺序排列。
+	2.如果IP在相同的/24中，则散列排序的IP，最低优先。
+	3.如果IP在ame/16中，则通过0xffffff55屏蔽IP，按顺序对其进行散列，最低优先。
+	4.如果IP不在相同的/16中，则通过0xffff5555屏蔽IP，按顺序对其进行散列，最低优先。
+	*对于IPv6对等端，只需使用前64位并加宽掩码。
+	像这样：0xffff5555->0xffffffff55555555低64位总是不被屏蔽
+	*对于IPv6地址，比较/32和/48，而不是/16和/24
+	*用于计算秩的两个IP地址必须始终属于同一地址族
+	*散列时，所有IP地址都按网络字节顺序排列
+	*/
 	std::uint32_t peer_priority(tcp::endpoint e1, tcp::endpoint e2)
 	{
 		TORRENT_ASSERT(is_v4(e1) == is_v4(e2));
@@ -161,15 +172,15 @@ namespace libtorrent {
 #if TORRENT_USE_I2P
 		, is_i2p_addr(false)
 #endif
-		, on_parole(false)
+		, on_parole(false) //假释
 		, banned(false)
-		, supports_utp(true) // assume peers support utp
+		, supports_utp(false) // assume peers support utp  //terry
 		, confirmed_supports_utp(false)
 		, supports_holepunch(false)
 		, web_seed(false)
 	{}
 
-	std::uint32_t torrent_peer::rank(external_ip const& external, int external_port) const
+	std::uint32_t torrent_peer::rank(external_ip const& external, int external_port) const// 排名
 	{
 		TORRENT_ASSERT(in_use);
 //TODO: how do we deal with our external address changing?

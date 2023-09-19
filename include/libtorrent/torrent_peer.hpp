@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2012-2018, Arvid Norberg
 All rights reserved.
@@ -133,6 +133,8 @@ namespace libtorrent {
 		// when the optimistic unchoke is moved to
 		// another torrent_peer, this torrent_peer will be choked
 		// if this is true
+		//如果此torrent_peer由于乐观解阻塞而当前未被阻塞，则为True。
+		//当乐观的unchoke被移动到另一个torrent_peer，这个torrent_peer将被阻塞，如果这是真的
 		std::uint32_t optimistically_unchoked:1;
 
 		// this is true if the torrent_peer is a seed, and we know for sure

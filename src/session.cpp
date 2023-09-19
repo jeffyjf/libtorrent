@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2006-2018, Arvid Norberg, Magnus Jonsson
 All rights reserved.
@@ -39,6 +39,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/aux_/session_impl.hpp"
 #include "libtorrent/aux_/session_call.hpp"
 #include "libtorrent/extensions.hpp" // for add_peer_flags_t
+#include "libtorrent/file.hpp"
 
 namespace libtorrent {
 
@@ -176,7 +177,7 @@ namespace {
 		set.set_int(settings_pack::max_out_request_queue, 1500);
 		set.set_int(settings_pack::max_allowed_in_request_queue, 2000);
 
-		set.set_int(settings_pack::max_peer_recv_buffer_size, 5 * 1024 * 1024);
+		set.set_int(settings_pack::max_peer_recv_buffer_size, 8 * 1024 * 1024);
 
 		// we will probably see a high rate of alerts, make it less
 		// likely to loose alerts
@@ -193,14 +194,15 @@ namespace {
 //		set.set_bool(settings_pack::allow_multiple_connections_per_ip, true);
 
 		// connect to 50 peers per second
-		set.set_int(settings_pack::connection_speed, 500);
+		set.set_int(settings_pack::connection_speed, 1000);
 
 		// allow 8000 peer connections
-		set.set_int(settings_pack::connections_limit, 8000);
+		set.set_int(settings_pack::connections_limit, 12000);
 
 		// allow lots of peers to try to connect simultaneously
 		set.set_int(settings_pack::listen_queue_size, 3000);
 
+		set.set_int(settings_pack::choking_algorithm, settings_pack::fixed_slots_choker);
 		// unchoke all peers
 		set.set_int(settings_pack::unchoke_slots_limit, -1);
 
@@ -221,9 +223,10 @@ namespace {
 		set.set_bool(settings_pack::coalesce_reads, false);
 		set.set_bool(settings_pack::coalesce_writes, false);
 
+
 		// the max number of bytes pending write before we throttle
 		// download rate
-		set.set_int(settings_pack::max_queued_disk_bytes, 7 * 1024 * 1024);
+		set.set_int(settings_pack::max_queued_disk_bytes, 200 * 1024 * 1024);
 
 		// prevent fast pieces to interfere with suggested pieces
 		// since we unchoke everyone, we don't need fast pieces anyway
@@ -234,7 +237,7 @@ namespace {
 
 		set.set_bool(settings_pack::close_redundant_connections, true);
 
-		set.set_int(settings_pack::max_rejects, 10);
+		set.set_int(settings_pack::max_rejects, 10); 
 
 		set.set_int(settings_pack::send_not_sent_low_watermark, 524288);
 
@@ -248,16 +251,15 @@ namespace {
 		set.set_int(settings_pack::active_dht_limit, 600);
 		set.set_int(settings_pack::active_seeds, 2000);
 
-		set.set_int(settings_pack::choking_algorithm, settings_pack::fixed_slots_choker);
 
 		// of 500 ms, and a send rate of 4 MB/s, the upper
 		// limit should be 2 MB
-		set.set_int(settings_pack::send_buffer_watermark, 3 * 1024 * 1024);
+		set.set_int(settings_pack::send_buffer_watermark, 30 * 1024 * 1024);
 
 		// put 1.5 seconds worth of data in the send buffer
 		// this gives the disk I/O more heads-up on disk
 		// reads, and can maximize throughput
-		set.set_int(settings_pack::send_buffer_watermark_factor, 150);
+		set.set_int(settings_pack::send_buffer_watermark_factor, 350);
 
 		// always stuff at least 1 MiB down each peer
 		// pipe, to quickly ramp up send rates
@@ -268,9 +270,18 @@ namespace {
 		set.set_int(settings_pack::max_failcount, 1);
 
 		// number of disk threads for low level file operations
-		set.set_int(settings_pack::aio_threads, 8);
+		set.set_int(settings_pack::aio_threads, 16);
 
 		set.set_int(settings_pack::checking_mem_usage, 2048);
+
+		set.set_bool(settings_pack::enable_outgoing_utp, false);
+		set.set_bool(settings_pack::enable_incoming_utp, false);
+
+		set.set_bool(settings_pack::enable_lsd, false);
+		set.set_bool(settings_pack::enable_dht, false);
+		set.set_bool(settings_pack::enable_natpmp, false);
+		set.set_bool(settings_pack::enable_upnp, false);
+		set.set_bool(settings_pack::prefer_udp_trackers, true);
 
 		return set;
 	}
@@ -472,4 +483,11 @@ namespace {
 		, dht_storage_constructor(dht::dht_default_storage_constructor)
 #endif
 	{}
+
+	void session::SetTfsApi(void* _pStoreDrv)
+	{
+		pStoreDrv = (StoreDriver*)_pStoreDrv;
+		pStoreDrvGen = (StoreDriverGen*)_pStoreDrv;
+
+	}
 }

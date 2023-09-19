@@ -44,6 +44,7 @@ nobase_include_HEADERS = \
   error_code.hpp               \
   extensions.hpp               \
   file.hpp                     \
+  tfsFile.hpp                  \
   file_pool.hpp                \
   file_storage.hpp             \
   fingerprint.hpp              \

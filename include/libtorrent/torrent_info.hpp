@@ -190,30 +190,30 @@ namespace libtorrent {
 #if TORRENT_ABI_VERSION == 1
 #ifndef BOOST_NO_EXCEPTIONS
 		TORRENT_DEPRECATED
-		torrent_info(char const* buffer, int size, int)
+			torrent_info(char const* buffer, int size, int)
 			: torrent_info(span<char const>{buffer, size}, from_span) {}
 #endif
 		TORRENT_DEPRECATED
-		torrent_info(bdecode_node const& torrent_file, error_code& ec, int)
+			torrent_info(bdecode_node const& torrent_file, error_code& ec, int)
 			: torrent_info(torrent_file, ec) {}
 		TORRENT_DEPRECATED
-		torrent_info(std::string const& filename, error_code& ec, int)
+			torrent_info(std::string const& filename, error_code& ec, int)
 			: torrent_info(filename, ec) {}
 		TORRENT_DEPRECATED
-		torrent_info(char const* buffer, int size, error_code& ec, int)
+			torrent_info(char const* buffer, int size, error_code& ec, int)
 			: torrent_info(span<char const>{buffer, size}, ec, from_span) {}
 		TORRENT_DEPRECATED
-		explicit torrent_info(lazy_entry const& torrent_file);
+			explicit torrent_info(lazy_entry const& torrent_file);
 
 		TORRENT_DEPRECATED
-		torrent_info(lazy_entry const& torrent_file, error_code& eca);
+			torrent_info(lazy_entry const& torrent_file, error_code& eca);
 		// all wstring APIs are deprecated since 0.16.11 instead, use the wchar
 		// -> utf8 conversion functions and pass in utf8 strings
 #ifdef TORRENT_WINDOWS
 		TORRENT_DEPRECATED
-		torrent_info(std::wstring const& filename, error_code& ec);
+			torrent_info(std::wstring const& filename, error_code& ec);
 		TORRENT_DEPRECATED
-		explicit torrent_info(std::wstring const& filename);
+			explicit torrent_info(std::wstring const& filename);
 #endif
 #endif // TORRENT_ABI_VERSION
 
@@ -267,7 +267,7 @@ namespace libtorrent {
 		// instead, use the wchar -> utf8 conversion functions
 		// and pass in utf8 strings
 		TORRENT_DEPRECATED
-		void rename_file(file_index_t index, std::wstring const& new_filename);
+			void rename_file(file_index_t index, std::wstring const& new_filename);
 #endif // TORRENT_ABI_VERSION
 
 		// Remaps the file storage to a new file layout. This can be used to, for
@@ -291,6 +291,7 @@ namespace libtorrent {
 		void add_tracker(std::string const& url, int tier
 			, announce_entry::tracker_source source);
 		std::vector<announce_entry> const& trackers() const { return m_urls; }
+		void clear_trackers() { m_urls.clear(); }
 
 		// These two functions are related to `BEP 38`_ (mutable torrents). The
 		// vectors returned from these correspond to the "similar" and

@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2006-2018, Arvid Norberg
 All rights reserved.
@@ -53,6 +53,11 @@ namespace libtorrent {
 	// not opening more file handles than specified. Given multiple threads,
 	// each with the ability to lock a file handle (via smart pointer), there
 	// may be windows where more file handles are open.
+	/*这是打开的文件句柄的内部缓存。
+	它主要由storage_interface实现使用。
+	它提供了半弱保证，不会打开多于指定的文件句柄。
+	给定多个线程，每个线程都有锁定一个文件句柄的能力(通过智能指针)，
+	可能存在打开更多文件句柄的窗口。*/
 	struct TORRENT_EXPORT file_pool : boost::noncopyable
 	{
 		// ``size`` specifies the number of allowed files handles

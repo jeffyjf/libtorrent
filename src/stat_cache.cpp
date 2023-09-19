@@ -78,6 +78,20 @@ namespace libtorrent {
 	std::int64_t stat_cache::get_filesize(file_index_t const i, file_storage const& fs
 		, std::string const& save_path, error_code& ec)
 	{
+
+        std::int64_t sz = fs.file_size(i);
+		set_cache_impl(i, sz);
+//#ifdef _WIN32
+//		OutputDebugStringA("set_cache_impl ");
+//		OutputDebugStringA(" idx:");
+//		OutputDebugStringA(std::to_string(i).c_str());
+//		OutputDebugStringA(" size:");
+//		OutputDebugStringA(std::to_string(sz).c_str());
+//		OutputDebugStringA("\n");
+//#endif
+		return sz;
+
+
 		// always pretend symlinks don't exist, to trigger special logic for
 		// creating and possibly validating them. There's a risk we'll and up in a
 		// cycle of references here otherwise.
@@ -92,7 +106,7 @@ namespace libtorrent {
 		TORRENT_ASSERT(i < fs.end_file());
 		if (i >= m_stat_cache.end_index()) m_stat_cache.resize(static_cast<int>(i) + 1
 			, stat_cache_t{not_in_cache});
-		std::int64_t sz = m_stat_cache[i].file_size;
+		sz = m_stat_cache[i].file_size;
 		if (sz < not_in_cache)
 		{
 			ec = m_errors[std::size_t(-sz + file_error)];
